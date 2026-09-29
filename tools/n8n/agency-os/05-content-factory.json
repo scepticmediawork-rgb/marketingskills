@@ -1,0 +1,624 @@
+{
+  "name": "Agency OS 05 \u00b7 Content Factory (weekly drafts + client approval)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Content Factory\nEvery **Monday 06:00** (your n8n timezone) it drafts next week's social content for each active client with Social or Content in their services.\n- **Brain (social playbook)** writes posts in the client's voice. It avoids hooks used before and leans on last month's performance headline.\n- Posts land in the **Content** tab as *Pending approval*, each with a secret token.\n- The client gets **one email** with every post and one-click **Approve / Request changes** buttons, handled by workflow 06.\n- Set `webhook_base_url` to your n8n public URL.",
+        "height": 300,
+        "width": 620,
+        "color": 4
+      },
+      "id": "81243636-355e-4994-bd50-608a33309ba3",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "0269e8c1-37e4-4110-bc7f-0d63e9733b79",
+      "name": "Every Monday 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bceed865-282a-42b3-939d-e2f9639d0b97",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "bca5455b-fb17-4ec5-a8e1-676c4b0c0691",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "dd3ee3b9-a91f-486a-be0b-1dc15692deaf",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "b8009b63-84a8-48fb-ad34-87afed6f2a1d",
+              "name": "webhook_base_url",
+              "type": "string",
+              "value": "https://your-n8n.example.com"
+            },
+            {
+              "id": "ff8a0f1e-16f9-453a-9e7f-dea95bf8c95f",
+              "name": "posts_per_client",
+              "type": "number",
+              "value": 5
+            },
+            {
+              "id": "ce01c376-54ef-4d37-9c78-ac2895ada026",
+              "name": "post_hour",
+              "type": "number",
+              "value": 9
+            },
+            {
+              "id": "4c62b7b3-6d6f-46d6-b5d8-a6692e21be93",
+              "name": "slack_content_channel",
+              "type": "string",
+              "value": "#agency-content"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ac1846c4-ca98-4e7c-bbf3-a38a8f86da19",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "options": {}
+      },
+      "id": "a961833f-d549-482f-82d2-4919c8bf59b3",
+      "name": "Read Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content"
+        },
+        "options": {}
+      },
+      "id": "c467b88e-1421-4c6d-9ee7-451fe5ef936c",
+      "name": "Read Content",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Metrics"
+        },
+        "options": {}
+      },
+      "id": "0e2847e8-6b69-4f2d-9ca5-22a4e7bbc9db",
+      "name": "Read Metrics",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rowsOf = (node) => { try { return $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length); } catch (e) { return []; } };\nconst activeClients = () => rowsOf('Read Clients').filter((c) => c.client_id && String(c.status || '').toLowerCase() === 'active');\nconst ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;\nconst daysAgo = (s) => { const t = Date.parse(s); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };\n\nconst cfg = $('Config').first().json;\nconst clients = activeClients().filter((c) => /social|content/i.test(c.services || ''));\nconst content = rowsOf('Read Content');\nconst metrics = rowsOf('Read Metrics');\nconst week_of = $now.plus({ weeks: 1 }).startOf('week').toISODate(); // next Monday, in the workflow's timezone\nconst post = { type: 'object', additionalProperties: false, required: ['channel', 'day', 'hook', 'body', 'cta', 'hashtags', 'visual_brief'],\n  properties: { channel: { type: 'string', enum: ['linkedin', 'instagram', 'x', 'facebook', 'tiktok'] }, day: { type: 'string', enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },\n    hook: { type: 'string' }, body: { type: 'string' }, cta: { type: 'string' }, hashtags: { type: 'array', items: { type: 'string' } },\n    visual_brief: { type: 'string', description: 'What the designer should create for this post' } } };\nconst schema = { type: 'object', additionalProperties: false, required: ['theme_of_week', 'posts'],\n  properties: { theme_of_week: { type: 'string' }, posts: { type: 'array', items: post } } };\nreturn clients.map((c) => {\n  const past = content.filter((r) => r.client_id === c.client_id).slice(-20).map((r) => r.hook);\n  const latest = metrics.filter((m) => m.client_id === c.client_id).sort((a, b) => String(b.month).localeCompare(String(a.month)))[0];\n  return { json: { client_id: c.client_id, client_name: c.client_name, week_of, brain: {\n    skill: 'social', caller: 'Content Factory', client: c.client_name, effort: 'medium', max_tokens: 10000, schema,\n    context: { client: c.client_name, website: c.website, audience: c.audience, brand_voice: c.brand_voice, goals: c.goals,\n      services: c.services, last_month_performance: latest ? latest.headline : 'no report yet', hooks_already_used: past },\n    task: `Write ${cfg.posts_per_client} social posts for ${c.client_name} for the week of ${week_of}. Choose channels that fit the audience (B2B usually LinkedIn-first). Mix formats: insight, story, proof, and one direct offer. Every hook must be new (see hooks_already_used). Match the brand voice exactly, keep claims verifiable, and spread posts across different days.`,\n  } } };\n});\n"
+      },
+      "id": "bfbb7879-95ed-4cdb-bb4f-8e3aef469d93",
+      "name": "Prep Content Briefs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "4b3455d3-58b6-4925-8f7c-07ff9b36cb12",
+      "name": "Brain: Draft Posts",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Config').first().json;\nconst dayIdx = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };\nconst token = () => Array.from({ length: 24 }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 32)]).join('');\nconst out = [];\nfor (const item of $input.all()) {\n  const x = item.json;\n  (x.ai?.posts || []).forEach((p, i) => {\n    const d = DateTime.fromISO(x.week_of, { zone: $now.zone }).plus({ days: dayIdx[p.day] ?? i }).set({ hour: Number(cfg.post_hour) || 9, minute: 0 });\n    out.push({ json: { id: `${x.client_id}-${x.week_of}-${i + 1}`, token: token(), client_id: x.client_id, client_name: x.client_name,\n      week_of: x.week_of, channel: p.channel, publish_at: d.toUTC().toISO(), hook: p.hook, body: p.body, cta: p.cta,\n      hashtags: (p.hashtags || []).map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '), visual_brief: p.visual_brief,\n      media_url: '', status: 'Pending approval', reviewed_at: '', ayrshare_id: '' } });\n  });\n}\nreturn out;\n"
+      },
+      "id": "18763797-59db-41a3-b606-bbaeed5b35c2",
+      "name": "Explode Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "token",
+              "displayName": "token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "week_of",
+              "displayName": "week_of",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publish_at",
+              "displayName": "publish_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hook",
+              "displayName": "hook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "body",
+              "displayName": "body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cta",
+              "displayName": "cta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hashtags",
+              "displayName": "hashtags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "visual_brief",
+              "displayName": "visual_brief",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "media_url",
+              "displayName": "media_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ayrshare_id",
+              "displayName": "ayrshare_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "76346dd4-8bcc-4d29-93ce-ad70824fd167",
+      "name": "Save Drafts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const esc = (s) => String(s ?? '').replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst li = (arr) => (arr || []).map((t) => `<li style=\"margin:0 0 6px\">${esc(t)}</li>`).join('');\nconst card = (title, inner) => `<div style=\"border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;margin:0 0 16px\"><h3 style=\"margin:0 0 10px;font-size:16px;color:#111827\">${esc(title)}</h3>${inner}</div>`;\nconst shell = (title, sub, inner) => `<div style=\"font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;color:#1f2937;line-height:1.5\"><div style=\"padding:24px 0 8px\"><div style=\"font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280\">${esc(sub)}</div><h1 style=\"margin:4px 0 0;font-size:24px;color:#111827\">${esc(title)}</h1></div>${inner}</div>`;\nconst pct = (v) => (v === null || v === undefined || Number.isNaN(v)) ? 'n/a' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;\n\nconst rowsOf = (node) => { try { return $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length); } catch (e) { return []; } };\nconst activeClients = () => rowsOf('Read Clients').filter((c) => c.client_id && String(c.status || '').toLowerCase() === 'active');\nconst ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;\nconst daysAgo = (s) => { const t = Date.parse(s); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };\n\nconst cfg = $('Config').first().json;\nconst base = String(cfg.webhook_base_url).replace(/\\/$/, '');\nconst clients = Object.fromEntries(activeClients().map((c) => [c.client_id, c]));\nconst byClient = {};\nfor (const { json: r } of $('Explode Posts').all()) (byClient[r.client_id] ||= []).push(r);\nconst themes = Object.fromEntries($('Brain: Draft Posts').all().map((i) => [i.json.client_id, i.json.ai?.theme_of_week || '']));\nreturn Object.entries(byClient).map(([cid, posts]) => {\n  const c = clients[cid] || {};\n  const btn = (p, d, label, color) => `<a href=\"${base}/webhook/content-review?id=${encodeURIComponent(p.id)}&t=${p.token}&d=${d}\" style=\"display:inline-block;margin-right:8px;background:${color};color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600\">${label}</a>`;\n  const cards = posts.map((p) => card(`${new Date(p.publish_at).toDateString()} \u00b7 ${p.channel}`,\n    `<p style=\"margin:0 0 8px;font-weight:600\">${esc(p.hook)}</p><p style=\"margin:0 0 8px;white-space:pre-wrap\">${esc(p.body)}</p><p style=\"margin:0 0 8px\">${esc(p.cta)}</p><p style=\"margin:0 0 12px;color:#4f46e5;font-size:13px\">${esc(p.hashtags)}</p><p style=\"margin:0 0 12px;font-size:12px;color:#6b7280\">Visual: ${esc(p.visual_brief)}</p>${btn(p, 'approve', 'Approve', '#059669')}${btn(p, 'changes', 'Request changes', '#6b7280')}`)).join('');\n  const html = shell(`Your content for the week of ${posts[0].week_of}`, `${cfg.agency_name} \u00b7 ${themes[cid] || 'weekly content'}`,\n    `<p>Hi ${esc(String(c.contact_name || '').split(' ')[0] || 'there')}, here are next week's posts. Approve each one with a click. Anything you don't approve won't be published.</p>${cards}`);\n  return { json: { client_id: cid, client_name: posts[0].client_name, to: c.contact_email, cc: c.account_manager_email || '', count: posts.length,\n    subject: `Approve next week's ${posts.length} posts: ${posts[0].client_name}`, html } };\n}).filter((e) => e.json.to);\n"
+      },
+      "id": "b146eb03-76b2-4fee-90b4-d67ca20eac6f",
+      "name": "Build Review Emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "={{ $json.cc }}"
+        }
+      },
+      "id": "a98b5acb-8cd6-4cb2-a34a-3de00fcdee42",
+      "name": "Email Client for Approval",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        400
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_content_channel }}"
+        },
+        "text": "=:memo: Content Factory drafted *{{ $('Explode Posts').all().length }} posts* for *{{ $('Build Review Emails').all().length }} clients* (week of {{ $('Prep Content Briefs').first().json.week_of }}). Approval emails sent; approved posts auto-schedule via workflow 06.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "f62bab78-a263-4bd3-aa92-0ec358caccc5",
+      "name": "Summary to Content Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Every Monday 06:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients": {
+      "main": [
+        [
+          {
+            "node": "Read Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Content": {
+      "main": [
+        [
+          {
+            "node": "Read Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Metrics": {
+      "main": [
+        [
+          {
+            "node": "Prep Content Briefs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Content Briefs": {
+      "main": [
+        [
+          {
+            "node": "Brain: Draft Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Draft Posts": {
+      "main": [
+        [
+          {
+            "node": "Explode Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Explode Posts": {
+      "main": [
+        [
+          {
+            "node": "Save Drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Drafts": {
+      "main": [
+        [
+          {
+            "node": "Build Review Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Review Emails": {
+      "main": [
+        [
+          {
+            "node": "Email Client for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Client for Approval": {
+      "main": [
+        [
+          {
+            "node": "Summary to Content Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

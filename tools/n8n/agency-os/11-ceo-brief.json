@@ -1,0 +1,478 @@
+{
+  "name": "Agency OS 11 \u00b7 CEO Brief with the Marketing Council",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## CEO Brief\n**Monday 07:30.** Rolls the whole agency into one email:\n- Pipeline: leads, hot leads, proposals, and pipeline value.\n- Revenue: MRR, new clients, MRR at risk.\n- Health distribution and **AI spend** (from the AI Ledger), including AI cost as a % of MRR.\n\nThen **Brain (marketing-council)** convenes the council of legendary marketers to comment on the numbers and agree on the week's top 3 priorities, plus one bold bet.",
+        "height": 300,
+        "width": 600,
+        "color": 4
+      },
+      "id": "54391b39-bdda-49a2-ae66-c9a1c49a7994",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 7 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "a09d2bbb-f648-4f4a-beac-073223363fe5",
+      "name": "Monday 07:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "29eadb50-bf95-4942-9054-c83637966eac",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "baa93aec-f400-4828-a183-9305d82a3be9",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "442e386f-1a06-4d22-a034-f6b2b0d72454",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "5c19ab40-a385-46a3-b3c4-f5852148d523",
+              "name": "founder_email",
+              "type": "string",
+              "value": "founder@your-agency.com"
+            },
+            {
+              "id": "a6e96070-a0cb-4fdc-984c-10c9d1c9bb98",
+              "name": "slack_leadership_channel",
+              "type": "string",
+              "value": "#agency-leadership"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "e879ff84-4d5c-4c87-a63e-3f8297818fd1",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "options": {}
+      },
+      "id": "d6744460-712e-43f6-a961-a513255447fc",
+      "name": "Read Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Proposals"
+        },
+        "options": {}
+      },
+      "id": "68309fde-a8aa-41cc-ba87-fc921cc0a991",
+      "name": "Read Proposals",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "options": {}
+      },
+      "id": "95be826b-3c04-4c80-a626-c105642a93bb",
+      "name": "Read Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Health"
+        },
+        "options": {}
+      },
+      "id": "3b502d04-1ca0-45fa-9170-ee2ef0ee7b9f",
+      "name": "Read Health",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AI Ledger"
+        },
+        "options": {}
+      },
+      "id": "7190290c-680c-4665-a185-e0998b7604c6",
+      "name": "Read AI Ledger",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1440,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rowsOf = (node) => { try { return $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length); } catch (e) { return []; } };\nconst activeClients = () => rowsOf('Read Clients').filter((c) => c.client_id && String(c.status || '').toLowerCase() === 'active');\nconst ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;\nconst daysAgo = (s) => { const t = Date.parse(s); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };\n\nconst within = (d, n) => { const a = daysAgo(d); return a !== null && a <= n; };\nconst leads = rowsOf('Read Leads'); const props = rowsOf('Read Proposals'); const clients = activeClients();\nconst health = rowsOf('Read Health'); const ledger = rowsOf('Read AI Ledger');\nconst l7 = leads.filter((l) => within(l.created_at, 7));\nconst hotWarm30 = leads.filter((l) => within(l.created_at, 30) && ['hot', 'warm'].includes(l.tier));\nconst src = {}; for (const l of l7) src[l.source || 'unknown'] = (src[l.source || 'unknown'] || 0) + 1;\nconst mrr = clients.reduce((s, c) => s + (Number(c.retainer_usd) || 0), 0);\nconst lastWeek = health.map((h) => h.week_of).sort().pop();\nconst hNow = health.filter((h) => h.week_of === lastWeek);\nconst atRisk = hNow.filter((h) => h.status === 'at-risk');\nconst retainer = Object.fromEntries(clients.map((c) => [c.client_id, Number(c.retainer_usd) || 0]));\nconst ai7 = ledger.filter((r) => within(r.timestamp, 7));\nconst aiSpend = ai7.reduce((s, r) => s + (Number(r.est_cost_usd) || 0), 0);\nconst aiBy = {}; for (const r of ai7) aiBy[r.caller] = Math.round(((aiBy[r.caller] || 0) + (Number(r.est_cost_usd) || 0)) * 100) / 100;\nconst kpis = {\n  leads_7d: l7.length, hot_leads_7d: l7.filter((l) => l.tier === 'hot').length,\n  avg_lead_score_7d: l7.length ? Math.round(l7.reduce((s, l) => s + (Number(l.score) || 0), 0) / l7.length) : null,\n  lead_sources_7d: src, pipeline_value_30d_usd_mo: hotWarm30.reduce((s, l) => s + (Number(l.est_deal_value_usd) || 0), 0),\n  proposals_7d: props.filter((p) => within(p.created_at, 7)).length,\n  proposal_value_7d_usd_mo: props.filter((p) => within(p.created_at, 7)).reduce((s, p) => s + (Number(p.proposal_value_usd) || 0), 0),\n  active_clients: clients.length, mrr_usd: mrr, new_clients_30d: clients.filter((c) => within(c.start_date, 30)).length,\n  health: { healthy: hNow.filter((h) => h.status === 'healthy').length, watch: hNow.filter((h) => h.status === 'watch').length, at_risk: atRisk.length },\n  at_risk_clients: atRisk.map((h) => ({ client: h.client_name, score: h.score, drivers: h.drivers })),\n  mrr_at_risk_usd: atRisk.reduce((s, h) => s + (retainer[h.client_id] || 0), 0),\n  ai_spend_7d_usd: Math.round(aiSpend * 100) / 100, ai_spend_by_workflow_7d: aiBy, ai_calls_7d: ai7.length,\n  ai_cost_pct_of_weekly_mrr: mrr ? Math.round((aiSpend / (mrr * 12 / 52)) * 10000) / 100 : null,\n};\nconst cfg = $('Config').first().json;\nconst schema = { type: 'object', additionalProperties: false, required: ['headline', 'scoreboard_commentary', 'council', 'top_priorities', 'risks', 'bold_bet'],\n  properties: { headline: { type: 'string' }, scoreboard_commentary: { type: 'string' },\n    council: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['advisor', 'take'], properties: { advisor: { type: 'string' }, take: { type: 'string' } } } },\n    top_priorities: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['priority', 'why', 'owner_role'], properties: { priority: { type: 'string' }, why: { type: 'string' }, owner_role: { type: 'string' } } } },\n    risks: { type: 'array', items: { type: 'string' } }, bold_bet: { type: 'string' } } };\nreturn [{ json: { kpis, week_of: ymd(new Date()), brain: {\n  skill: 'marketing-council', caller: 'CEO Brief', client: cfg.agency_name, effort: 'high', max_tokens: 8000, schema,\n  context: { agency: cfg.agency_name, week_of: ymd(new Date()), kpis },\n  task: `Convene the council to review ${cfg.agency_name}'s own business this week (we are the marketing agency; the KPIs are our pipeline, revenue, client health, and AI costs). Pick the 3-4 advisors whose lenses fit these numbers best, give each one sharp paragraph grounded in the data, then converge on exactly 3 priorities for this week, the main risks, and one bold bet.`,\n} } }];\n"
+      },
+      "id": "b98d72df-d277-4b59-b73b-6891d9e06912",
+      "name": "Compute Agency KPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a2aaf511-b461-47b8-bc41-a40ba59d0fe1",
+      "name": "Brain: Convene Council",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const esc = (s) => String(s ?? '').replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst li = (arr) => (arr || []).map((t) => `<li style=\"margin:0 0 6px\">${esc(t)}</li>`).join('');\nconst card = (title, inner) => `<div style=\"border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;margin:0 0 16px\"><h3 style=\"margin:0 0 10px;font-size:16px;color:#111827\">${esc(title)}</h3>${inner}</div>`;\nconst shell = (title, sub, inner) => `<div style=\"font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;color:#1f2937;line-height:1.5\"><div style=\"padding:24px 0 8px\"><div style=\"font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280\">${esc(sub)}</div><h1 style=\"margin:4px 0 0;font-size:24px;color:#111827\">${esc(title)}</h1></div>${inner}</div>`;\nconst pct = (v) => (v === null || v === undefined || Number.isNaN(v)) ? 'n/a' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;\n\nconst x = $json; const k = x.kpis; const a = x.ai || {};\nconst cfg = $('Config').first().json;\nconst money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString();\nconst tile = (label, v, sub) => `<td style=\"padding:12px;border:1px solid #e5e7eb;border-radius:8px;text-align:center;width:25%\"><div style=\"font-size:12px;color:#6b7280\">${label}</div><div style=\"font-size:22px;font-weight:700;color:#111827\">${v}</div><div style=\"font-size:12px;color:#6b7280\">${sub || ''}</div></td>`;\nconst council = (a.council || []).map((c) => `<li style=\"margin:0 0 10px\"><b>${esc(c.advisor)}</b>: ${esc(c.take)}</li>`).join('');\nconst prios = (a.top_priorities || []).map((p) => `<li style=\"margin:0 0 8px\"><b>${esc(p.priority)}</b> <span style=\"color:#6b7280\">(${esc(p.owner_role)})</span><br>${esc(p.why)}</li>`).join('');\nconst html = shell(a.headline || 'Your week at a glance', `${cfg.agency_name} \u00b7 CEO brief \u00b7 week of ${x.week_of}`,\n  `<table style=\"border-spacing:8px;margin:0 -8px 8px;width:100%\"><tr>${tile('MRR', money(k.mrr_usd), `${k.active_clients} active clients`)}${tile('Leads (7d)', k.leads_7d, `${k.hot_leads_7d} hot \u00b7 avg ${k.avg_lead_score_7d ?? '\u2013'}`)}${tile('Pipeline (30d)', money(k.pipeline_value_30d_usd_mo), 'per month, hot + warm')}${tile('MRR at risk', money(k.mrr_at_risk_usd), `${k.health.at_risk} at-risk \u00b7 ${k.health.watch} watch`)}</tr></table>`\n  + `<table style=\"border-spacing:8px;margin:0 -8px 16px;width:100%\"><tr>${tile('Proposals (7d)', k.proposals_7d, money(k.proposal_value_7d_usd_mo) + '/mo')}${tile('New clients (30d)', k.new_clients_30d)}${tile('AI spend (7d)', money(k.ai_spend_7d_usd), `${k.ai_calls_7d} calls`)}${tile('AI cost / MRR', k.ai_cost_pct_of_weekly_mrr === null ? '\u2013' : k.ai_cost_pct_of_weekly_mrr + '%', 'of weekly MRR')}</tr></table>`\n  + card('The scoreboard', `<p style=\"margin:0\">${esc(a.scoreboard_commentary || x.ai_error || '')}</p>`)\n  + card('Top 3 priorities this week', `<ol style=\"padding-left:18px;margin:0\">${prios}</ol>`)\n  + card('The council', `<ul style=\"padding-left:18px;margin:0\">${council}</ul>`)\n  + card('Risks', `<ul style=\"padding-left:18px;margin:0\">${li(a.risks)}</ul>`)\n  + card('One bold bet', `<p style=\"margin:0;font-weight:600\">${esc(a.bold_bet)}</p>`)\n  + (k.at_risk_clients.length ? card('Clients at risk', `<ul style=\"padding-left:18px;margin:0\">${li(k.at_risk_clients.map((c) => `${c.client} (${c.score}): ${c.drivers}`))}</ul>`) : ''));\nconst slack_text = `:crystal_ball: *CEO brief: ${a.headline || ''}*\\nMRR ${money(k.mrr_usd)} \u00b7 leads ${k.leads_7d} (${k.hot_leads_7d} hot) \u00b7 MRR at risk ${money(k.mrr_at_risk_usd)} \u00b7 AI spend ${money(k.ai_spend_7d_usd)}\\n*Priorities:*\\n${(a.top_priorities || []).map((p, i) => `${i + 1}. ${p.priority}`).join('\\n')}\\n*Bold bet:* ${a.bold_bet || ''}`;\nreturn [{ json: { subject: `CEO brief \u00b7 ${x.week_of}: ${a.headline || ''}`.slice(0, 180), html, slack_text } }];\n"
+      },
+      "id": "8b5ca501-0d3a-43b2-8812-8b489b37ead0",
+      "name": "Render Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Config').first().json.founder_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "c4ec3f25-eba6-47a1-8f7e-96e7f7d161ea",
+      "name": "Email Founder",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        400
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_leadership_channel }}"
+        },
+        "text": "={{ $('Render Brief').item.json.slack_text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "2db7b92e-34b3-4c80-b6fd-c23c7a797c92",
+      "name": "Post to Leadership",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Monday 07:30": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Leads": {
+      "main": [
+        [
+          {
+            "node": "Read Proposals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Proposals": {
+      "main": [
+        [
+          {
+            "node": "Read Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients": {
+      "main": [
+        [
+          {
+            "node": "Read Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Health": {
+      "main": [
+        [
+          {
+            "node": "Read AI Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read AI Ledger": {
+      "main": [
+        [
+          {
+            "node": "Compute Agency KPIs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Agency KPIs": {
+      "main": [
+        [
+          {
+            "node": "Brain: Convene Council",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Convene Council": {
+      "main": [
+        [
+          {
+            "node": "Render Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Brief": {
+      "main": [
+        [
+          {
+            "node": "Email Founder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Founder": {
+      "main": [
+        [
+          {
+            "node": "Post to Leadership",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

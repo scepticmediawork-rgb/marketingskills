@@ -1,0 +1,405 @@
+{
+  "name": "Agency OS 08 \u00b7 Anomaly Sentinel (daily traffic & conversion watchdog)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Anomaly Sentinel\nEvery morning it compares **yesterday** with the **same weekday over the previous 4 weeks**, which removes weekly seasonality, and with a 28-day z-score.\n\nA metric is flagged when both tests agree and the baseline is big enough to matter. That covers traffic drops and spikes, conversion drops, revenue swings, and tracking outages (0 sessions).\n\n**Brain (analytics)** ranks likely causes with how to check each, gives immediate actions, and drafts a client message. Your team hears about it **before the client notices**.",
+        "height": 300,
+        "width": 620,
+        "color": 4
+      },
+      "id": "2ba22e65-7ebf-425e-be9e-22fa903a4f02",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "b29e8352-1538-497d-abc4-02e9a10b10c7",
+      "name": "Daily 08:15",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3f90527a-fcc3-4a92-8e5d-2833ca792311",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "555e4419-6ff7-4e92-a4fe-fc2cf166fac7",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "59b6978a-748f-452a-8330-a36cfd44f079",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "a04af3a6-1dcb-43e9-b4f3-7010ee91bf38",
+              "name": "slack_alerts_channel",
+              "type": "string",
+              "value": "#agency-alerts"
+            },
+            {
+              "id": "1f8faa4c-36d7-4682-b1c1-4bf9590a5324",
+              "name": "threshold_pct",
+              "type": "number",
+              "value": 35
+            },
+            {
+              "id": "707003aa-0d9a-4c9c-bbf0-1046ed87f35a",
+              "name": "min_z",
+              "type": "number",
+              "value": 2
+            },
+            {
+              "id": "7065d94d-2370-4cc2-9fa9-ba21b0298597",
+              "name": "min_baseline_sessions",
+              "type": "number",
+              "value": 50
+            },
+            {
+              "id": "cc214214-7bbb-4e8b-bba9-eb03917c7a0d",
+              "name": "min_baseline_key_events",
+              "type": "number",
+              "value": 5
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "05c6162d-3e31-41b8-b7cf-29b4453efdd8",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "options": {}
+      },
+      "id": "2107ddd4-9dd0-4f48-82dc-575218a6e338",
+      "name": "Read Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rowsOf = (node) => { try { return $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length); } catch (e) { return []; } };\nconst activeClients = () => rowsOf('Read Clients').filter((c) => c.client_id && String(c.status || '').toLowerCase() === 'active');\nconst ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;\nconst daysAgo = (s) => { const t = Date.parse(s); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };\n\nreturn activeClients().filter((c) => String(c.ga4_property_id || '').replace(/\\D/g, '')).map((c) => ({ json: {\n  client: c, ga4_property_id: c.ga4_property_id,\n  ga4_request: { dateRanges: [{ startDate: '35daysAgo', endDate: 'yesterday' }], dimensions: [{ name: 'date' }],\n    metrics: [{ name: 'sessions' }, { name: 'keyEvents' }, { name: 'totalRevenue' }], orderBys: [{ dimension: { dimensionName: 'date' } }], keepEmptyRows: true },\n} }));\n"
+      },
+      "id": "cff404fc-e141-4799-9fb0-b92ab0188c78",
+      "name": "Prep Daily Series",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://analyticsdata.googleapis.com/v1beta/properties/{{ String($json.ga4_property_id).replace(/\\D/g, \"\") }}:runReport",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleAnalyticsOAuth2",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ga4_request) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "5ff4ea93-72f9-413a-8cce-9d75d3aa4fa7",
+      "name": "GA4: Daily Series",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "",
+          "name": "Google Analytics (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const c = $('Prep Daily Series').item.json.client;\nconst cfg = $('Config').first().json;\nconst rows = ($json.rows || []).map((r) => ({ date: r.dimensionValues[0].value, sessions: Number(r.metricValues[0].value), keyEvents: Number(r.metricValues[1].value), revenue: Number(r.metricValues[2].value) }))\n  .sort((a, b) => a.date.localeCompare(b.date));\nconst mean = (a) => a.reduce((s, v) => s + v, 0) / (a.length || 1);\nconst std = (a) => { const m = mean(a); return Math.sqrt(mean(a.map((v) => (v - m) ** 2))); };\nconst findings = [];\nif (rows.length >= 29) {\n  const y = rows[rows.length - 1];\n  for (const [metric, floor] of [['sessions', cfg.min_baseline_sessions], ['keyEvents', cfg.min_baseline_key_events], ['revenue', 100]]) {\n    const sameDay = [8, 15, 22, 29].map((o) => rows[rows.length - o]?.[metric]).filter((v) => v !== undefined);\n    const prior = rows.slice(-29, -1).map((r) => r[metric]);\n    const base = mean(sameDay); const sd = std(prior); const val = y[metric];\n    if (base < Number(floor)) continue;\n    const change = ((val - base) / base) * 100; const z = sd ? (val - mean(prior)) / sd : (val === mean(prior) ? 0 : Math.sign(val - mean(prior)) * 99);\n    if (Math.abs(change) >= Number(cfg.threshold_pct) && Math.abs(z) >= Number(cfg.min_z)) {\n      findings.push({ metric, date: y.date, value: val, same_weekday_baseline: Math.round(base * 100) / 100, change_pct: Math.round(change * 10) / 10, z_score: Math.round(z * 10) / 10, direction: change < 0 ? 'drop' : 'spike' });\n    }\n  }\n}\nconst schema = { type: 'object', additionalProperties: false, required: ['severity', 'headline', 'likely_causes', 'immediate_actions', 'client_message_draft'],\n  properties: { severity: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] }, headline: { type: 'string' },\n    likely_causes: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['cause', 'likelihood', 'how_to_check'], properties: { cause: { type: 'string' }, likelihood: { type: 'string', enum: ['high', 'medium', 'low'] }, how_to_check: { type: 'string' } } } },\n    immediate_actions: { type: 'array', items: { type: 'string' } }, client_message_draft: { type: 'string' } } };\nreturn { json: { client: c, has_anomaly: findings.length > 0, findings, ga4_error: $json.error ? ($json.error.message || 'GA4 error') : null, brain: {\n  skill: 'analytics', caller: 'Anomaly Sentinel', client: c.client_name, effort: 'medium', max_tokens: 5000, schema,\n  context: { client: c.client_name, website: c.website, services: c.services, anomalies: findings, last_14_days: rows.slice(-14) },\n  task: 'Diagnose these anomalies. Rank the likely causes (tracking or tag breakage, site outage, campaign paused or budget change, algorithm update, seasonality or holiday, bot traffic) and give a concrete way to check each one. A drop to near-zero sessions usually means tracking is broken; say so. Draft a short, calm client message the AM can send if needed.',\n} } };\n"
+      },
+      "id": "47bf87bf-ca79-497d-a735-5c75dc00d77a",
+      "name": "Detect Anomalies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "aed0f7c2-fd3e-471c-a2f8-cb1c4ac82063",
+              "leftValue": "={{ $json.has_anomaly }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b64bf2e7-da19-4aa5-bca3-21dca38ce13f",
+      "name": "Only Anomalies",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9a99f0d1-1620-4546-95a3-62867708d690",
+      "name": "Brain: Diagnose",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $json; const a = x.ai || {};\nconst icon = { critical: ':rotating_light:', high: ':red_circle:', medium: ':large_orange_circle:', low: ':large_yellow_circle:' }[a.severity] || ':warning:';\nconst f = x.findings.map((d) => `\u2022 *${d.metric}* ${d.direction} ${d.change_pct}% vs same-weekday avg (${d.value} vs ${d.same_weekday_baseline}, z=${d.z_score}) on ${d.date}`).join('\\n');\nconst causes = (a.likely_causes || []).map((c) => `\u2022 _${c.likelihood}_ ${c.cause}. Check: ${c.how_to_check}`).join('\\n');\nconst acts = (a.immediate_actions || []).map((s, i) => `${i + 1}. ${s}`).join('\\n');\nreturn { json: { text: `${icon} *${x.client.client_name}: ${a.headline || 'metric anomaly'}* (${a.severity || 'unrated'})\\n${f}\\n\\n*Likely causes*\\n${causes}\\n\\n*Do now*\\n${acts}\\n\\n*Draft client message*\\n>${String(a.client_message_draft || '').replace(/\\n/g, '\\n>')}` } };\n"
+      },
+      "id": "c49dcfc1-ea22-44b5-9644-9c892b09dc80",
+      "name": "Format Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_alerts_channel }}"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "4c83d617-dd7d-4d46-94b6-bc7b0b8a47a6",
+      "name": "Alert Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Daily 08:15": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients": {
+      "main": [
+        [
+          {
+            "node": "Prep Daily Series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Daily Series": {
+      "main": [
+        [
+          {
+            "node": "GA4: Daily Series",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GA4: Daily Series": {
+      "main": [
+        [
+          {
+            "node": "Detect Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Anomalies": {
+      "main": [
+        [
+          {
+            "node": "Only Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only Anomalies": {
+      "main": [
+        [
+          {
+            "node": "Brain: Diagnose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Diagnose": {
+      "main": [
+        [
+          {
+            "node": "Format Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert": {
+      "main": [
+        [
+          {
+            "node": "Alert Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
