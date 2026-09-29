@@ -1,0 +1,732 @@
+{
+  "name": "Agency OS 09 \u00b7 Competitor Radar",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Competitor Radar\nEvery **Wednesday** it re-reads each competitor URL in the **Competitors** tab, which onboarding seeds automatically.\n- Diffs the page text against last week's snapshot sentence by sentence, and tracks price points.\n- Meaningful changes go to **Brain (competitor-profiling)**. It classifies the change (pricing, positioning, offer...), explains what it signals, and recommends counter-moves for your client.\n- Only medium and high significance changes reach Slack. Snapshots update every run.",
+        "height": 300,
+        "width": 600,
+        "color": 4
+      },
+      "id": "f9fa43bf-cf9a-4f7f-b796-4af2f4ed89bd",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 3"
+            }
+          ]
+        }
+      },
+      "id": "94593554-d696-483f-b047-567773e18e0f",
+      "name": "Wednesday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d56668bd-b5e0-4ac6-8562-b8c709372a22",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "929e4a8c-2816-4f49-b919-7ff81508ad07",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "cd7ec6df-5031-44c1-84b4-68508ff0270f",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "46ae5385-e373-4e60-8aec-46f566f7eb45",
+              "name": "slack_intel_channel",
+              "type": "string",
+              "value": "#agency-intel"
+            },
+            {
+              "id": "82b9008a-e97e-409f-bd02-66113c7bb973",
+              "name": "min_changed_sentences",
+              "type": "number",
+              "value": 3
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "fba8578e-74dd-41c3-9a7f-67c1a379f436",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Competitors"
+        },
+        "options": {}
+      },
+      "id": "5163b4bf-53b0-46de-bab3-71cdb4464cba",
+      "name": "Read Competitors",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "options": {}
+      },
+      "id": "d7d6d078-c458-4311-995a-1bc08977b2fe",
+      "name": "Read Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rowsOf = (node) => { try { return $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length); } catch (e) { return []; } };\nconst activeClients = () => rowsOf('Read Clients').filter((c) => c.client_id && String(c.status || '').toLowerCase() === 'active');\nconst ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;\nconst daysAgo = (s) => { const t = Date.parse(s); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };\n\nconst clients = Object.fromEntries(activeClients().map((c) => [c.client_id, c]));\nreturn rowsOf('Read Competitors').filter((r) => r.competitor_url && clients[r.client_id])\n  .map((r) => ({ json: { ...r, client_name: clients[r.client_id].client_name, client_positioning: clients[r.client_id].goals || '', client_website: clients[r.client_id].website } }));\n"
+      },
+      "id": "7412fba2-f5d1-4062-b7e5-b6842062ab87",
+      "name": "Valid Competitors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.competitor_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html"
+            }
+          },
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "allowUnauthorizedCerts": false
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; AgencyOS-Audit/1.0)"
+            }
+          ]
+        }
+      },
+      "id": "3a9b9d7c-1f5f-435d-8ff8-833dd9c25116",
+      "name": "Fetch Competitor Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stripHtml = (h) => String(h || '')\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<noscript[\\s\\S]*?<\\/noscript>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, \"'\").replace(/&quot;/g, '\"')\n  .replace(/\\s+/g, ' ').trim();\nconst grab = (h, re) => { const m = String(h || '').match(re); return m ? stripHtml(m[1]).slice(0, 300) : ''; };\nconst grabAll = (h, re, n = 10) => [...String(h || '').matchAll(re)].map((m) => stripHtml(m[1])).filter(Boolean).slice(0, n);\n\nconst c = $('Valid Competitors').item.json;\nconst cfg = $('Config').first().json;\nconst html = typeof $json.html === 'string' ? $json.html : '';\nconst snapshot = stripHtml(html).slice(0, 8000);\nconst prev = String(c.last_snapshot || '');\nconst sents = (s) => new Set(s.split(/(?<=[.!?])\\s+/).map((t) => t.trim()).filter((t) => t.length > 25));\nconst A = sents(snapshot), B = sents(prev);\nconst added = [...A].filter((t) => !B.has(t)).slice(0, 25);\nconst removed = [...B].filter((t) => !A.has(t)).slice(0, 25);\nconst prices = (s) => [...new Set((s.match(/[$\u20ac\u00a3]\\s?\\d[\\d,.]*(?:\\s?\\/\\s?(?:mo|month|yr|year|user|seat))?/gi) || []))];\nconst changed = !!prev && !!snapshot && (added.length + removed.length) >= Number(cfg.min_changed_sentences);\nconst schema = { type: 'object', additionalProperties: false, required: ['change_type', 'significance', 'what_changed', 'what_it_signals', 'counter_moves'],\n  properties: { change_type: { type: 'string', enum: ['pricing', 'positioning', 'product', 'offer', 'social_proof', 'content', 'minor'] },\n    significance: { type: 'string', enum: ['low', 'medium', 'high'] }, what_changed: { type: 'string' }, what_it_signals: { type: 'string' },\n    counter_moves: { type: 'array', items: { type: 'string' } } } };\nreturn { json: { client_id: c.client_id, client_name: c.client_name, competitor_url: c.competitor_url, reachable: !!snapshot, changed, snapshot,\n  brain: { skill: 'competitor-profiling', caller: 'Competitor Radar', client: c.client_name, effort: 'medium', max_tokens: 4000, schema,\n    context: { our_client: c.client_name, our_client_site: c.client_website, our_client_goals: c.client_positioning, competitor: c.competitor_url,\n      sentences_added: added, sentences_removed: removed, prices_before: prices(prev), prices_now: prices(snapshot) },\n    task: 'A competitor page changed since last week. Classify the change, rate its significance for our client (rotating testimonials, dates and cookie banners are \"minor\"/\"low\"), explain what it signals about the competitor\\'s strategy, and give 2-3 specific counter-moves for our client.' } } };\n"
+      },
+      "id": "518fab3e-ec97-46cf-8e66-b3bb50aa56d7",
+      "name": "Diff Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ea7b559-73c7-4381-8de1-70f9932ab89b",
+              "leftValue": "={{ $json.reachable }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "21a7a895-c616-453a-bcd7-0feee372ea14",
+      "name": "Reachable",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { competitor_url: $json.competitor_url, last_snapshot: $json.snapshot, last_checked: new Date().toISOString() } };\n"
+      },
+      "id": "a6566230-4e27-4408-9d83-add680f2a6e7",
+      "name": "Snapshot Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Competitors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "competitor_url"
+          ],
+          "schema": [
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competitor_url",
+              "displayName": "competitor_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_snapshot",
+              "displayName": "last_snapshot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_change_summary",
+              "displayName": "last_change_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "91f9fa70-9807-4dea-8efa-dd1fd40645a2",
+      "name": "Save Snapshot",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2160,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e3ffd0d5-0d9e-4103-9ff3-3240d9de46af",
+              "leftValue": "={{ $json.changed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "207f1ca4-2b8b-4262-abc5-93fcc838eec9",
+      "name": "Only Changes",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "9ea38f21-9758-45cd-baf8-2fc2781d4632",
+      "name": "Brain: Analyze Change",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "263f8b64-6501-495d-9465-c53a82773d05",
+              "leftValue": "={{ ['medium', 'high'].includes($json.ai?.significance) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "98728176-0249-4f5c-bf85-fc558b499e00",
+      "name": "Only Significant",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { competitor_url: $json.competitor_url, last_change_summary: `${new Date().toISOString().slice(0, 10)} [${$json.ai.change_type}/${$json.ai.significance}] ${$json.ai.what_changed}` } };\n"
+      },
+      "id": "6edc056f-e466-498c-88b3-c3786450f898",
+      "name": "Change Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Competitors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "competitor_url"
+          ],
+          "schema": [
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competitor_url",
+              "displayName": "competitor_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_snapshot",
+              "displayName": "last_snapshot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_change_summary",
+              "displayName": "last_change_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "24227eb5-08fa-4f41-bfe4-0ccf58319d0a",
+      "name": "Save Change Summary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2640,
+        800
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_intel_channel }}"
+        },
+        "text": "=:satellite_antenna: *Competitor move for {{ $json.client_name }}* ({{ $json.ai.change_type }}, {{ $json.ai.significance }})\n<{{ $json.competitor_url }}>\n*What changed:* {{ $json.ai.what_changed }}\n*Signals:* {{ $json.ai.what_it_signals }}\n*Counter-moves:*\n{{ $json.ai.counter_moves.map(m => '\u2022 ' + m).join('\\n') }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "11265de5-a288-494a-b46e-6c9db28913f2",
+      "name": "Intel Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Wednesday 07:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Read Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Competitors": {
+      "main": [
+        [
+          {
+            "node": "Read Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients": {
+      "main": [
+        [
+          {
+            "node": "Valid Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Competitors": {
+      "main": [
+        [
+          {
+            "node": "Fetch Competitor Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Competitor Page": {
+      "main": [
+        [
+          {
+            "node": "Diff Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diff Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Reachable",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Only Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reachable": {
+      "main": [
+        [
+          {
+            "node": "Snapshot Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Snapshot Row": {
+      "main": [
+        [
+          {
+            "node": "Save Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only Changes": {
+      "main": [
+        [
+          {
+            "node": "Brain: Analyze Change",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Analyze Change": {
+      "main": [
+        [
+          {
+            "node": "Only Significant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only Significant": {
+      "main": [
+        [
+          {
+            "node": "Intel Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Change Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Change Row": {
+      "main": [
+        [
+          {
+            "node": "Save Change Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

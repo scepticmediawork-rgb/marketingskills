@@ -1,0 +1,1217 @@
+{
+  "name": "Agency OS 10 \u00b7 Client Health & Churn Predictor",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Client Health & Churn Predictor\n**Inbox listener (hourly):** when a client emails you, `last_client_reply` updates automatically (matched by address or company domain).\n\n**Friday 16:00 scoring (0-100):**\n| Signal | Points |\n|---|---|\n| Results: key events MoM | 40 |\n| Responsiveness: days since the client last replied | 20 |\n| Billing: overdue invoices | 20 |\n| Delivery: approvals stuck near their publish date | 20 |\n\nScores of 75+ are healthy, 50-74 are watch, and under 50 are at-risk. Scores are saved to **Health** and **Clients**. For watch and at-risk clients, **Brain (churn-prevention)** writes a save plan with call talking points and posts it to leadership.",
+        "height": 400,
+        "width": 640,
+        "color": 4
+      },
+      "id": "e3e9f40c-37a5-4574-b794-e6fed7c286ad",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 16 * * 5"
+            }
+          ]
+        }
+      },
+      "id": "7838c513-4173-4df2-8405-e05136e66ce4",
+      "name": "Friday 16:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": true,
+        "filters": {
+          "q": "in:inbox -from:me"
+        }
+      },
+      "id": "4eb54197-cabd-445e-b2ec-acf9a88e43eb",
+      "name": "New Inbound Email",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1000
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1fec2bf7-60a0-4dd7-aebb-b195e7c2b686",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "46573fb7-d1a9-47df-b440-304d14b1a1c6",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "8171ee4f-918b-4b6d-ab87-e94edd3e7a1a",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "5f9fb686-87de-4821-b0e4-be4e87378f32",
+              "name": "slack_leadership_channel",
+              "type": "string",
+              "value": "#agency-leadership"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "31ba1833-4b0c-4352-be4c-73ac29d53766",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f41c9813-c5fb-4910-81ed-7fcf01318f6f",
+              "leftValue": "={{ !!$json.threadId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c7f48ad7-3ab5-4985-8e5e-b5f838327f13",
+      "name": "Inbound Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "options": {}
+      },
+      "id": "ca928f1b-08a5-4fb6-a255-6e9576e13c83",
+      "name": "Read Clients (inbox)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        1000
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const free = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com', 'proton.me', 'live.com'];\nconst clients = $('Read Clients (inbox)').all().map((i) => i.json).filter((c) => c.client_id && c.contact_email);\nconst today = new Date().toISOString().slice(0, 10);\nconst hits = new Set();\nfor (const { json: m } of $('New Inbound Email').all()) {\n  const from = String(m.From || m.from || '').toLowerCase();\n  const addr = (from.match(/<([^>]+)>/) || [])[1] || from.trim();\n  const dom = addr.split('@')[1] || '';\n  for (const c of clients) {\n    const ce = String(c.contact_email).toLowerCase(); const cd = ce.split('@')[1] || '';\n    if (addr === ce || (dom && dom === cd && !free.includes(dom))) hits.add(c.client_id);\n  }\n}\nreturn [...hits].map((client_id) => ({ json: { client_id, last_client_reply: today } }));\n"
+      },
+      "id": "82dbdedd-3adb-4819-ae7e-68239e502c2b",
+      "name": "Match Sender to Client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "client_id"
+          ],
+          "schema": [
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_name",
+              "displayName": "contact_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_email",
+              "displayName": "contact_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "account_manager_email",
+              "displayName": "account_manager_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "services",
+              "displayName": "services",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retainer_usd",
+              "displayName": "retainer_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ga4_property_id",
+              "displayName": "ga4_property_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slack_channel_id",
+              "displayName": "slack_channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drive_folder_id",
+              "displayName": "drive_folder_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ayrshare_profile_key",
+              "displayName": "ayrshare_profile_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_voice",
+              "displayName": "brand_voice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "audience",
+              "displayName": "audience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goals",
+              "displayName": "goals",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competitors",
+              "displayName": "competitors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_client_reply",
+              "displayName": "last_client_reply",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invoices_overdue",
+              "displayName": "invoices_overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "health_score",
+              "displayName": "health_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "health_status",
+              "displayName": "health_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "43732f7f-1043-420b-94e1-bc2d7bf0b549",
+      "name": "Update Last Reply",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        1000
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "options": {}
+      },
+      "id": "d457ec8a-29b4-46c2-a730-a8567847f4ff",
+      "name": "Read Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Metrics"
+        },
+        "options": {}
+      },
+      "id": "4501943d-d78e-403e-9f8c-31a9a59d73a3",
+      "name": "Read Metrics",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        960,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Content"
+        },
+        "options": {}
+      },
+      "id": "7ed89a7a-e86f-4745-97f3-9f35a2705dd0",
+      "name": "Read Content",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1200,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const rowsOf = (node) => { try { return $(node).all().map((i) => i.json).filter((r) => r && Object.keys(r).length); } catch (e) { return []; } };\nconst activeClients = () => rowsOf('Read Clients').filter((c) => c.client_id && String(c.status || '').toLowerCase() === 'active');\nconst ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;\nconst daysAgo = (s) => { const t = Date.parse(s); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };\n\nconst metrics = rowsOf('Read Metrics'); const content = rowsOf('Read Content');\nconst week_of = ymd(new Date());\nreturn activeClients().map((c) => {\n  const hist = metrics.filter((m) => m.client_id === c.client_id).sort((a, b) => String(b.month).localeCompare(String(a.month)));\n  const latest = hist[0]; const drivers = [];\n  const isNew = (daysAgo(c.start_date) ?? 999) < 45;\n  let results = 20;\n  if (latest && latest.key_events_mom_pct !== '' && latest.key_events_mom_pct !== undefined) {\n    const mom = Number(latest.key_events_mom_pct);\n    results = mom >= 10 ? 40 : mom >= -5 ? 30 : mom >= -20 ? 15 : 0;\n    if (results < 30) drivers.push(`key events ${mom}% MoM`);\n  } else if (isNew) { results = 30; } else { drivers.push('no performance data'); }\n  const quiet = daysAgo(c.last_client_reply);\n  const resp = quiet === null ? 10 : quiet <= 7 ? 20 : quiet <= 14 ? 12 : quiet <= 30 ? 5 : 0;\n  if (resp < 12) drivers.push(quiet === null ? 'no reply date on file' : `client quiet for ${quiet} days`);\n  const overdue = Number(c.invoices_overdue) || 0;\n  const billing = overdue === 0 ? 20 : overdue === 1 ? 8 : 0;\n  if (overdue) drivers.push(`${overdue} invoice(s) overdue`);\n  const stuck = content.filter((r) => r.client_id === c.client_id && r.status === 'Pending approval' && Date.parse(r.publish_at) < Date.now() + 2 * 864e5).length;\n  const delivery = stuck === 0 ? 20 : stuck <= 2 ? 10 : 0;\n  if (stuck) drivers.push(`${stuck} post(s) stuck in approval`);\n  const score = results + resp + billing + delivery;\n  const status = score >= 75 ? 'healthy' : score >= 50 ? 'watch' : 'at-risk';\n  const schema = { type: 'object', additionalProperties: false, required: ['risk_level', 'root_cause_hypotheses', 'save_plan', 'call_talking_points', 'value_reminders'],\n    properties: { risk_level: { type: 'string', enum: ['watch', 'at-risk', 'critical'] }, root_cause_hypotheses: { type: 'array', items: { type: 'string' } },\n      save_plan: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['action', 'owner_role', 'due_in_days'], properties: { action: { type: 'string' }, owner_role: { type: 'string' }, due_in_days: { type: 'integer' } } } },\n      call_talking_points: { type: 'array', items: { type: 'string' } }, value_reminders: { type: 'array', items: { type: 'string', description: 'Concrete wins delivered, taken from the data' } } } };\n  return { json: { week_of, client_id: c.client_id, client_name: c.client_name, retainer_usd: c.retainer_usd, account_manager_email: c.account_manager_email,\n    score, status, results_pts: results, responsiveness_pts: resp, billing_pts: billing, delivery_pts: delivery, drivers: drivers.join('; ') || 'none',\n    brain: { skill: 'churn-prevention', caller: 'Client Health', client: c.client_name, effort: 'high', max_tokens: 6000, schema,\n      context: { client: c.client_name, retainer_usd: c.retainer_usd, services: c.services, goals: c.goals, client_since: c.start_date, health_score: score, status, risk_drivers: drivers, recent_months: hist.slice(0, 3) },\n      task: 'This is a marketing-agency retainer client (a B2B service relationship, not a SaaS subscriber). Adapt the playbook to agency retention. Hypothesize why the relationship is cooling, then write a save plan the account team can run this week: specific actions with an owner role and a due date, talking points for a candid check-in call, and value reminders drawn only from the data.' } } };\n});\n"
+      },
+      "id": "3e3b5c36-9fae-4521-b652-b5b72ac230bf",
+      "name": "Score Clients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(({ json: x }) => ({ json: { week_of: x.week_of, client_id: x.client_id, client_name: x.client_name, score: x.score, status: x.status, results_pts: x.results_pts, responsiveness_pts: x.responsiveness_pts, billing_pts: x.billing_pts, delivery_pts: x.delivery_pts, drivers: x.drivers } }));\n"
+      },
+      "id": "256cddf2-64cd-4e94-bcb2-eb95c3b463ea",
+      "name": "Health Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Health"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "week_of",
+              "displayName": "week_of",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "results_pts",
+              "displayName": "results_pts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "responsiveness_pts",
+              "displayName": "responsiveness_pts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "billing_pts",
+              "displayName": "billing_pts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "delivery_pts",
+              "displayName": "delivery_pts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drivers",
+              "displayName": "drivers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4227ad58-c80d-4abf-9ac1-334e6c784278",
+      "name": "Log Health",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(({ json: x }) => ({ json: { client_id: x.client_id, health_score: x.score, health_status: x.status } }));\n"
+      },
+      "id": "40522582-8f6e-4f0a-bfcd-09c1700ea626",
+      "name": "Client Score Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "client_id"
+          ],
+          "schema": [
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_name",
+              "displayName": "contact_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_email",
+              "displayName": "contact_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "account_manager_email",
+              "displayName": "account_manager_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "services",
+              "displayName": "services",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retainer_usd",
+              "displayName": "retainer_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ga4_property_id",
+              "displayName": "ga4_property_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slack_channel_id",
+              "displayName": "slack_channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drive_folder_id",
+              "displayName": "drive_folder_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ayrshare_profile_key",
+              "displayName": "ayrshare_profile_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_voice",
+              "displayName": "brand_voice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "audience",
+              "displayName": "audience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goals",
+              "displayName": "goals",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competitors",
+              "displayName": "competitors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_client_reply",
+              "displayName": "last_client_reply",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invoices_overdue",
+              "displayName": "invoices_overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "health_score",
+              "displayName": "health_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "health_status",
+              "displayName": "health_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e07d333d-f4a5-4ace-a158-ad005cd7da1a",
+      "name": "Update Client Health",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1920,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cd5ce6bb-8b15-4ca5-9845-24311f5d01f6",
+              "leftValue": "={{ $json.status !== 'healthy' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f7f15ffa-aeac-4980-b988-2a8e13f29601",
+      "name": "Watch or At-risk",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "cb6123a5-5c54-42bc-a021-924c7fd1cbde",
+      "name": "Brain: Save Plan",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $json; const a = x.ai || {};\nconst plan = (a.save_plan || []).map((s) => `\u2022 ${s.action} (_${s.owner_role}_, within ${s.due_in_days}d)`).join('\\n');\nreturn { json: { text: `${x.status === 'at-risk' ? ':red_circle:' : ':large_orange_circle:'} *${x.client_name}* health ${x.score}/100 (${x.status}) \u00b7 $${x.retainer_usd}/mo at stake\\n*Drivers:* ${x.drivers}\\n*Why it may be cooling:*\\n${(a.root_cause_hypotheses || []).map((h) => '\u2022 ' + h).join('\\n')}\\n*Save plan:*\\n${plan}\\n*Call talking points:*\\n${(a.call_talking_points || []).map((h) => '\u2022 ' + h).join('\\n')}\\n*Remind them of:*\\n${(a.value_reminders || []).map((h) => '\u2022 ' + h).join('\\n')}\\nAM: ${x.account_manager_email}` } };\n"
+      },
+      "id": "1c4efc77-e6c3-4d2b-9061-09d0773248c3",
+      "name": "Format Save Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_leadership_channel }}"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "b97922e4-276c-460b-9ce0-0d016e4f4393",
+      "name": "Alert Leadership",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Friday 16:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Inbound Email": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Inbound Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inbound Email?": {
+      "main": [
+        [
+          {
+            "node": "Read Clients (inbox)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients (inbox)": {
+      "main": [
+        [
+          {
+            "node": "Match Sender to Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Sender to Client": {
+      "main": [
+        [
+          {
+            "node": "Update Last Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Clients": {
+      "main": [
+        [
+          {
+            "node": "Read Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Metrics": {
+      "main": [
+        [
+          {
+            "node": "Read Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Content": {
+      "main": [
+        [
+          {
+            "node": "Score Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Clients": {
+      "main": [
+        [
+          {
+            "node": "Health Rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Client Score Rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Watch or At-risk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Rows": {
+      "main": [
+        [
+          {
+            "node": "Log Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Score Rows": {
+      "main": [
+        [
+          {
+            "node": "Update Client Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Watch or At-risk": {
+      "main": [
+        [
+          {
+            "node": "Brain: Save Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Save Plan": {
+      "main": [
+        [
+          {
+            "node": "Format Save Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Save Plan": {
+      "main": [
+        [
+          {
+            "node": "Alert Leadership",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

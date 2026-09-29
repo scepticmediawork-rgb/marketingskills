@@ -1,0 +1,791 @@
+{
+  "name": "Agency OS 02 \u00b7 Lead Radar (enrich, score, route)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Lead Radar\nCaptures leads from **any website form** (POST JSON to the webhook) or the built-in **n8n form**, then:\n1. Normalizes fields and guesses the website from a business email domain.\n2. Reads the lead's website: title, positioning, and tech stack (GA4, Meta Pixel, HubSpot, Shopify...).\n3. **Brain (revops playbook)** scores fit 0-100, assigns a tier, recommends a service, and drafts a personal opener.\n4. Logs to **Leads**, then routes: \ud83d\udd25 hot -> Slack alert + booking email \u00b7 \ud83c\udf24 warm -> nurture email \u00b7 cold/spam -> archived.",
+        "height": 330,
+        "width": 620,
+        "color": 4
+      },
+      "id": "70177b46-bf5c-4913-89e2-e1358e20a756",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agency-lead",
+        "options": {}
+      },
+      "id": "30bd226b-fc74-4dfc-9689-ae96173433e4",
+      "name": "Website Form Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "2c20c167-09c8-4a80-b74d-80699ebc92b9"
+    },
+    {
+      "parameters": {
+        "formTitle": "Let's grow together",
+        "formDescription": "Tell us about your business. We reply within one business day.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Website"
+            },
+            {
+              "fieldLabel": "Service",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "SEO"
+                  },
+                  {
+                    "option": "Paid Ads"
+                  },
+                  {
+                    "option": "Social Media"
+                  },
+                  {
+                    "option": "Content"
+                  },
+                  {
+                    "option": "CRO / Website"
+                  },
+                  {
+                    "option": "Full-funnel Growth"
+                  },
+                  {
+                    "option": "Not sure yet"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Monthly budget (USD)",
+              "fieldType": "number"
+            },
+            {
+              "fieldLabel": "What do you want to achieve?",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Thanks! We're reviewing your details and will be in touch shortly."
+            }
+          }
+        }
+      },
+      "id": "d64570d7-339a-4107-9c63-d15770556fcf",
+      "name": "n8n Lead Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        600
+      ],
+      "webhookId": "c9aeda6a-81d0-4a5b-9b43-7ac66da8f7fa"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b4ba4ed0-4210-48b0-b63a-0f023a36093b",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "75418b96-7a65-403e-9449-12451adf5e73",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "233f52d9-0aed-48ca-af0a-e2eead32a42e",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "95fbbc5e-a98e-4540-9856-400974436294",
+              "name": "min_hot_score",
+              "type": "number",
+              "value": 75
+            },
+            {
+              "id": "88b6afa5-6ca7-4547-bce1-ed84f63755bc",
+              "name": "booking_link",
+              "type": "string",
+              "value": "https://cal.com/your-agency/strategy-call"
+            },
+            {
+              "id": "461ea949-00d7-47eb-864f-465142e43d2f",
+              "name": "nurture_link",
+              "type": "string",
+              "value": "https://your-agency.com/growth-guide"
+            },
+            {
+              "id": "6439c1b0-0486-4036-a2a3-2c3e8450600d",
+              "name": "slack_leads_channel",
+              "type": "string",
+              "value": "#agency-leads"
+            },
+            {
+              "id": "984106a8-738a-49b7-ae7c-7f7fcb3fa335",
+              "name": "sender_name",
+              "type": "string",
+              "value": "Alex from Your Agency"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "e3b3fa00-acdc-4c7c-8a6c-9d3c183bc6a2",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const src = $json.body && typeof $json.body === 'object' ? $json.body : $json;\nconst pick = (...keys) => {\n  for (const k of Object.keys(src)) {\n    const norm = k.toLowerCase().replace(/[^a-z]/g, '');\n    if (keys.some((want) => norm.startsWith(want))) { const v = src[k]; if (v !== undefined && v !== '') return String(v).trim(); }\n  }\n  return '';\n};\nconst email = pick('email').toLowerCase();\nconst free = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com'];\nlet website = pick('website', 'url', 'site', 'domain');\nconst domain = email.split('@')[1] || '';\nif (!website && domain && !free.includes(domain)) website = domain;\nif (website && !/^https?:\\/\\//i.test(website)) website = 'https://' + website;\nreturn { json: {\n  created_at: new Date().toISOString(),\n  name: pick('name', 'fullname', 'firstname'), email, company: pick('company', 'business', 'organization'),\n  website, service: pick('service', 'interest', 'need') || 'Not sure yet',\n  budget: Number(pick('monthlybudget', 'budget').replace(/[^0-9.]/g, '')) || 0,\n  message: pick('message', 'whatdoyou', 'goal', 'details', 'notes'),\n  source: pick('source', 'utmsource') || ($json.formMode ? 'n8n form' : 'website'),\n} };\n"
+      },
+      "id": "3ec97a20-8121-403a-a639-b9b1737d6941",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.website || 'https://invalid.invalid' }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html"
+            }
+          },
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "allowUnauthorizedCerts": false
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; AgencyOS-Audit/1.0)"
+            }
+          ]
+        }
+      },
+      "id": "4280adb4-8746-4211-89b9-abed38232214",
+      "name": "Fetch Lead Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stripHtml = (h) => String(h || '')\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<noscript[\\s\\S]*?<\\/noscript>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, \"'\").replace(/&quot;/g, '\"')\n  .replace(/\\s+/g, ' ').trim();\nconst grab = (h, re) => { const m = String(h || '').match(re); return m ? stripHtml(m[1]).slice(0, 300) : ''; };\nconst grabAll = (h, re, n = 10) => [...String(h || '').matchAll(re)].map((m) => stripHtml(m[1])).filter(Boolean).slice(0, n);\n\nconst lead = $('Normalize Lead').item.json;\nconst html = typeof $json.html === 'string' ? $json.html : '';\nconst has = (re) => re.test(html);\nconst stack = Object.entries({\n  'Google Analytics 4': /gtag\\(|googletagmanager\\.com\\/gtag|G-[A-Z0-9]{6,}/, 'Google Tag Manager': /GTM-[A-Z0-9]+/,\n  'Meta Pixel': /connect\\.facebook\\.net|fbq\\(/, 'LinkedIn Insight': /snap\\.licdn\\.com/, 'TikTok Pixel': /analytics\\.tiktok\\.com/,\n  'HubSpot': /js\\.hs-scripts\\.com|hubspot/i, 'Shopify': /cdn\\.shopify\\.com|Shopify\\.theme/, 'WordPress': /wp-content|wp-includes/,\n  'Webflow': /webflow/i, 'Wix': /wixstatic|wix\\.com/, 'Squarespace': /squarespace/i, 'Intercom': /intercom/i,\n  'Calendly': /calendly/i, 'Stripe': /js\\.stripe\\.com/, 'Klaviyo': /klaviyo/i,\n}).filter(([, re]) => has(re)).map(([k]) => k);\nconst site = html ? {\n  reachable: true, title: grab(html, /<title[^>]*>([\\s\\S]*?)<\\/title>/i),\n  meta_description: (html.match(/<meta[^>]+name=[\"']description[\"'][^>]+content=[\"']([^\"']*)/i) || [])[1] || '',\n  h1: grabAll(html, /<h1[^>]*>([\\s\\S]*?)<\\/h1>/gi, 3), tech_stack: stack,\n  text_excerpt: stripHtml(html).slice(0, 2500),\n} : { reachable: false };\n\nconst schema = {\n  type: 'object', additionalProperties: false,\n  required: ['score', 'tier', 'fit_summary', 'recommended_service', 'est_deal_value_usd', 'buying_signals', 'risks', 'personalized_opener', 'next_best_action'],\n  properties: {\n    score: { type: 'integer', description: 'Fit and intent score from 0 to 100' },\n    tier: { type: 'string', enum: ['hot', 'warm', 'cold', 'spam'] },\n    fit_summary: { type: 'string', description: 'Two sentences on why this lead does or does not fit' },\n    recommended_service: { type: 'string' },\n    est_deal_value_usd: { type: 'integer', description: 'Estimated monthly retainer value' },\n    buying_signals: { type: 'array', items: { type: 'string' } },\n    risks: { type: 'array', items: { type: 'string' } },\n    personalized_opener: { type: 'string', description: 'One sentence referencing something specific about their business, for the first email' },\n    next_best_action: { type: 'string' },\n  },\n};\nconst cfg = $('Config').first().json;\nreturn { json: { ...lead, site, brain: {\n  skill: 'revops', caller: 'Lead Radar', client: lead.company, effort: 'medium', max_tokens: 4000, schema,\n  context: { agency: cfg.agency_name, lead, website_signals: site },\n  task: `Score this inbound lead for ${cfg.agency_name}. Use the lead-scoring approach from your playbook: fit (company, website maturity, budget vs the requested service) plus intent (message specificity, urgency). A monthly budget under $1,000 for paid media or full-funnel work is weak fit. Use \"spam\" for junk or vendor pitches. \"hot\" needs score >= ${cfg.min_hot_score}. The opener must reference something real from their website or message.`,\n} } };\n"
+      },
+      "id": "c863a2a4-4fbe-44c1-8e51-aa4a120471dc",
+      "name": "Read Website Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "7bd5b916-e345-4386-9772-8d2e1de05f66",
+      "name": "Brain: Score Lead",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const a = $json.ai || {};\nif (a.score !== undefined) a.score = Math.max(0, Math.min(100, Math.round(Number(a.score) || 0)));\nconst hot = Number($('Config').first().json.min_hot_score);\nlet tier = a.tier || 'warm';\nif (tier === 'hot' && (a.score || 0) < hot) tier = 'warm';\nreturn { json: {\n  created_at: $json.created_at, name: $json.name, email: $json.email, company: $json.company, website: $json.website,\n  service: $json.service, budget: $json.budget, message: $json.message, source: $json.source,\n  score: a.score ?? '', tier: $json.ai_error ? 'needs review' : tier, recommended_service: a.recommended_service || '',\n  est_deal_value_usd: a.est_deal_value_usd ?? '', fit_summary: a.fit_summary || $json.ai_error || '',\n  buying_signals: (a.buying_signals || []).join('; '), risks: (a.risks || []).join('; '),\n  next_best_action: a.next_best_action || '', personalized_opener: a.personalized_opener || '',\n} };\n"
+      },
+      "id": "08755fc4-c893-42fb-a4b9-658711bc16b9",
+      "name": "Lead Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "budget",
+              "displayName": "budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recommended_service",
+              "displayName": "recommended_service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "est_deal_value_usd",
+              "displayName": "est_deal_value_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit_summary",
+              "displayName": "fit_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "buying_signals",
+              "displayName": "buying_signals",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "risks",
+              "displayName": "risks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "next_best_action",
+              "displayName": "next_best_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "personalized_opener",
+              "displayName": "personalized_opener",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f523ca4-e679-4b1a-bd8c-603643e59db9",
+      "name": "Log Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "155e25bb-ee87-45ff-85d7-974197106ccc",
+                    "leftValue": "={{ $('Lead Row').item.json.tier }}",
+                    "rightValue": "hot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9424215a-91d8-4ea0-a361-1f12407df2bd",
+                    "leftValue": "={{ $('Lead Row').item.json.tier }}",
+                    "rightValue": "warm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "cold / spam / review"
+        }
+      },
+      "id": "e6792332-5f96-4503-98e3-a3d4f81691a0",
+      "name": "Route by Tier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_leads_channel }}"
+        },
+        "text": "=:fire: *Hot lead \u2014 {{ $('Lead Row').item.json.company }}* (score {{ $('Lead Row').item.json.score }}/100)\n*Contact:* {{ $('Lead Row').item.json.name }} \u00b7 {{ $('Lead Row').item.json.email }}\n*Wants:* {{ $('Lead Row').item.json.service }} \u00b7 budget ${{ $('Lead Row').item.json.budget }}/mo \u00b7 est. value ${{ $('Lead Row').item.json.est_deal_value_usd }}/mo\n*Why:* {{ $('Lead Row').item.json.fit_summary }}\n*Signals:* {{ $('Lead Row').item.json.buying_signals }}\n*Recommended:* {{ $('Lead Row').item.json.recommended_service }}\n*Next:* {{ $('Lead Row').item.json.next_best_action }}\nBooking email sent automatically. Reply in thread to claim.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "23019c38-dd44-4671-be03-b806163eb1a9",
+      "name": "Alert: Hot Lead",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        200
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lead Row').item.json.email }}",
+        "subject": "={{ $('Lead Row').item.json.name.split(' ')[0] || 'Hi' }}, quick next step for {{ $('Lead Row').item.json.company }}",
+        "emailType": "text",
+        "message": "=Hi {{ $('Lead Row').item.json.name.split(' ')[0] || 'there' }},\n\n{{ $('Lead Row').item.json.personalized_opener }}\n\nBased on what you shared, I think {{ $('Lead Row').item.json.recommended_service }} is where we can move the needle fastest. I'd love to walk you through what that could look like for {{ $('Lead Row').item.json.company }}.\n\nGrab any 30-minute slot that works: {{ $('Config').first().json.booking_link }}\n\nTalk soon,\n{{ $('Config').first().json.sender_name }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "41b2acc8-05cb-4774-9fd3-3b22bf894532",
+      "name": "Email: Book a Call",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        200
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Lead Row').item.json.email }}",
+        "subject": "=Thanks for reaching out, {{ $('Lead Row').item.json.name.split(' ')[0] || 'there' }}",
+        "emailType": "text",
+        "message": "=Hi {{ $('Lead Row').item.json.name.split(' ')[0] || 'there' }},\n\n{{ $('Lead Row').item.json.personalized_opener }}\n\nWhile we review your details, here's the playbook we use with clients at your stage: {{ $('Config').first().json.nurture_link }}\n\nIf you'd like to talk it through, just reply to this email.\n\n{{ $('Config').first().json.sender_name }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "8cfd6255-a466-4d22-a048-e874fa6ae693",
+      "name": "Email: Nurture",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2160,
+        600
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "3aa90684-ce54-4cae-b143-cbeaac896b06",
+      "name": "Archive",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        1000
+      ]
+    }
+  ],
+  "connections": {
+    "Website Form Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n Lead Form": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Fetch Lead Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Lead Website": {
+      "main": [
+        [
+          {
+            "node": "Read Website Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Website Signals": {
+      "main": [
+        [
+          {
+            "node": "Brain: Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Lead Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Row": {
+      "main": [
+        [
+          {
+            "node": "Log Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lead": {
+      "main": [
+        [
+          {
+            "node": "Route by Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tier": {
+      "main": [
+        [
+          {
+            "node": "Alert: Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email: Nurture",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Archive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert: Hot Lead": {
+      "main": [
+        [
+          {
+            "node": "Email: Book a Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

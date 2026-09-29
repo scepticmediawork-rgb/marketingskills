@@ -1,0 +1,218 @@
+{
+  "name": "Agency OS 00 \u00b7 Setup: Create Agency DB",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Agency OS \u00b7 Setup\nRun this **once**. It creates the *Agency DB* Google Sheet with every tab and header row the other workflows expect.\n\n1. Connect a Google Sheets OAuth2 credential on both HTTP nodes.\n2. Click **Execute workflow**.\n3. Copy `spreadsheet_id` from the last node into the **Config** node of every other workflow (`sheet_id`).",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "0daa257b-4e17-429a-aacb-0799bb6288f7",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6d7496c4-aeb1-423a-a39e-e0157a8d1f9c",
+      "name": "Run Setup",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0aca396b-c6ef-4d97-91b9-6092bf0e5124",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "3e4c9aab-1934-494e-a375-1ee93a01ab15",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "0b7b6ced-b2bc-406c-9b49-a0b6625a9d14",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "99d5e21d-47fd-48b0-b68e-d5c95b54cf03",
+              "name": "db_title",
+              "type": "string",
+              "value": "Agency OS \u00b7 Agency DB"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "6659b862-64b6-42df-b7f5-2eb2752af607",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const tabs = {\"Clients\": [\"client_id\", \"client_name\", \"status\", \"website\", \"contact_name\", \"contact_email\", \"account_manager_email\", \"services\", \"retainer_usd\", \"start_date\", \"ga4_property_id\", \"slack_channel_id\", \"drive_folder_id\", \"ayrshare_profile_key\", \"brand_voice\", \"audience\", \"goals\", \"competitors\", \"last_client_reply\", \"invoices_overdue\", \"health_score\", \"health_status\"], \"Leads\": [\"created_at\", \"name\", \"email\", \"company\", \"website\", \"service\", \"budget\", \"message\", \"source\", \"score\", \"tier\", \"recommended_service\", \"est_deal_value_usd\", \"fit_summary\", \"buying_signals\", \"risks\", \"next_best_action\", \"personalized_opener\"], \"Proposals\": [\"created_at\", \"company\", \"website\", \"contact_name\", \"contact_email\", \"goal\", \"budget\", \"seo_score\", \"cro_score\", \"recommended_package\", \"proposal_value_usd\", \"status\"], \"Content\": [\"id\", \"token\", \"client_id\", \"client_name\", \"week_of\", \"channel\", \"publish_at\", \"hook\", \"body\", \"cta\", \"hashtags\", \"visual_brief\", \"media_url\", \"status\", \"reviewed_at\", \"ayrshare_id\"], \"Metrics\": [\"month\", \"client_id\", \"client_name\", \"sessions\", \"users\", \"key_events\", \"revenue\", \"engagement_rate\", \"sessions_mom_pct\", \"key_events_mom_pct\", \"revenue_mom_pct\", \"headline\"], \"Competitors\": [\"client_id\", \"competitor_url\", \"last_checked\", \"last_snapshot\", \"last_change_summary\"], \"Health\": [\"week_of\", \"client_id\", \"client_name\", \"score\", \"status\", \"results_pts\", \"responsiveness_pts\", \"billing_pts\", \"delivery_pts\", \"drivers\"], \"AI Ledger\": [\"timestamp\", \"caller\", \"client\", \"skill\", \"model\", \"input_tokens\", \"output_tokens\", \"cache_read_tokens\", \"cache_write_tokens\", \"est_cost_usd\", \"stop_reason\", \"error\"]};\nconst title = $('Config').first().json.db_title;\nreturn [{ json: {\n  create_body: { properties: { title }, sheets: Object.keys(tabs).map((t, i) => ({ properties: { title: t, index: i, gridProperties: { frozenRowCount: 1 } } })) },\n  headers: Object.entries(tabs).map(([t, cols]) => ({ range: `'${t}'!A1`, values: [cols] })),\n} }];\n"
+      },
+      "id": "20cc9617-0d83-4124-88b6-4c39dfa00bd2",
+      "name": "Build Spreadsheet Spec",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.create_body) }}",
+        "options": {}
+      },
+      "id": "22be1d58-f7dc-453d-a015-d99b6dc4c1a6",
+      "name": "Create Spreadsheet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://sheets.googleapis.com/v4/spreadsheets/{{ $json.spreadsheetId }}/values:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ valueInputOption: 'RAW', data: $('Build Spreadsheet Spec').first().json.headers }) }}",
+        "options": {}
+      },
+      "id": "7d787079-d93f-4dc8-8ed6-9a4bcb04a6bf",
+      "name": "Write Header Rows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $('Create Spreadsheet').first().json;\nreturn [{ json: {\n  spreadsheet_id: s.spreadsheetId,\n  spreadsheet_url: s.spreadsheetUrl,\n  next_step: 'Paste spreadsheet_id into the sheet_id field of the Config node in every Agency OS workflow.',\n} }];\n"
+      },
+      "id": "cd064df0-e10c-4aac-b04a-35c923d6a943",
+      "name": "Show Sheet ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Run Setup": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Spreadsheet Spec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Spreadsheet Spec": {
+      "main": [
+        [
+          {
+            "node": "Create Spreadsheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Spreadsheet": {
+      "main": [
+        [
+          {
+            "node": "Write Header Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Header Rows": {
+      "main": [
+        [
+          {
+            "node": "Show Sheet ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

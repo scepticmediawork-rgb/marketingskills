@@ -1,0 +1,420 @@
+{
+  "name": "Agency OS 01 \u00b7 Agency Brain (Claude + skill playbooks)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Agency Brain\nEvery AI step in Agency OS calls this sub-workflow.\n\n**Input item** must contain a `brain` object:\n```\nbrain: {\n  skill,        // marketingskills skill name, e.g. \"seo-audit\"\n  task,         // what to produce\n  context,      // string or object with the facts\n  schema,       // optional JSON schema -> strict JSON output\n  effort,       // low | medium | high | xhigh\n  caller, client, max_tokens\n}\n```\n**Returns** the same item (minus `brain`) plus `ai` (parsed JSON or text), `ai_text`, `ai_error`, `ai_meta` (tokens, cost).\n\nThe skill's `SKILL.md` is fetched from GitHub and becomes the system prompt, so the Brain always runs the latest playbook. Every call is logged to the **AI Ledger** tab for per-client AI cost tracking.",
+        "height": 560,
+        "width": 620,
+        "color": 5
+      },
+      "id": "dfd51071-26f5-423b-8479-c57b06b57301",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "9232ec88-5113-411f-a9e1-b8be5c86dd6f",
+      "name": "Brain Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Edit these values once. Pricing is per 1M tokens for the model below.\nreturn {\n  json: {\n    ...$json,\n    _cfg: {\n      agency_name: 'Your Agency',\n      sheet_id: 'PASTE_AGENCY_DB_SHEET_ID',\n      skills_base_url: 'https://raw.githubusercontent.com/coreyhaines31/marketingskills/main',\n      model: 'claude-opus-5-5',\n      price_in: 4, price_out: 20, price_cache_read: 0.2, price_cache_write: 5,\n    },\n  },\n};\n"
+      },
+      "id": "3e076bb2-fc28-4764-8cbd-dbc057171f3f",
+      "name": "Brain Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json._cfg.skills_base_url }}/skills/{{ ($json.brain && $json.brain.skill) || 'marketing-ideas' }}/SKILL.md",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "playbook"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "beaaad38-927c-4a36-9c6b-11027b843ada",
+      "name": "Fetch Skill Playbook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        400
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const inp = $('Brain Config').item.json;\nconst b = inp.brain || {};\nconst cfg = inp._cfg;\nlet playbook = typeof $json.playbook === 'string' ? $json.playbook : '';\nif (!playbook.includes('\\n') || /^\\s*(404|Not Found)/i.test(playbook)) playbook = '';\nplaybook = playbook.replace(/^---[\\s\\S]*?\\n---\\s*/, '');\n\nconst operating = `You are a senior strategist at ${cfg.agency_name}, a marketing agency. You are running inside an automated n8n pipeline:\n- Nobody can answer follow-up questions. Where the playbook says to ask the user something or to read a context file, use the client context supplied in the message instead, make the most reasonable assumption, and state it briefly.\n- Ground every claim in the supplied context. Never invent metrics, quotes, prices, or results; if data is missing, say what is missing.\n- Write for a busy agency team and their clients: specific, concrete, and actionable. No filler.\n- Return only what the task asks for.`;\n\nconst system = [{\n  type: 'text',\n  text: playbook\n    ? `${operating}\\n\\nApply this playbook as your working method:\\n<playbook skill=\"${b.skill}\">\\n${playbook}\\n</playbook>`\n    : operating,\n  cache_control: { type: 'ephemeral' },\n}];\n\nconst ctx = typeof b.context === 'string' ? b.context : JSON.stringify(b.context ?? {}, null, 2);\nconst body = {\n  model: cfg.model,\n  max_tokens: b.max_tokens || 16000,\n  system,\n  messages: [{ role: 'user', content: `<context>\\n${ctx}\\n</context>\\n\\n${b.task || 'Summarize the context.'}` }],\n  thinking: { type: 'adaptive' },\n  output_config: { effort: b.effort || 'medium' },\n  fallbacks: 'default',\n};\nif (b.schema) body.output_config.format = { type: 'json_schema', schema: b.schema };\nreturn { json: { body } };\n"
+      },
+      "id": "52a28bd9-68e9-49e4-bc07-f95e6a379771",
+      "name": "Build Claude Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "anthropic-beta",
+              "value": "server-side-fallback-2026-07-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "952158d6-515f-4c7a-ab41-3ccb5e4f968a",
+      "name": "Call Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "",
+          "name": "Anthropic (Agency Brain)"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const inp = $('Brain Config').item.json;\nconst b = inp.brain || {};\nconst cfg = inp._cfg;\nconst res = $json;\nlet ai = null, ai_text = '', ai_error = null;\n\nif (res.error) {\n  ai_error = typeof res.error === 'string' ? res.error : (res.error.message || JSON.stringify(res.error));\n} else if (res.stop_reason === 'refusal') {\n  ai_error = `refusal (${res.stop_details?.category || 'unspecified'})`;\n} else {\n  ai_text = (res.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\\n').trim();\n  if (res.stop_reason === 'max_tokens') ai_error = 'truncated: raise brain.max_tokens';\n  if (b.schema) {\n    try { ai = JSON.parse(ai_text); } catch (e) { ai_error = ai_error || `invalid JSON: ${e.message}`; }\n  } else {\n    ai = ai_text;\n  }\n}\n\nconst u = res.usage || {};\nconst cost = ((u.input_tokens || 0) * cfg.price_in + (u.output_tokens || 0) * cfg.price_out\n  + (u.cache_read_input_tokens || 0) * cfg.price_cache_read\n  + (u.cache_creation_input_tokens || 0) * cfg.price_cache_write) / 1e6;\n\nconst { brain, _cfg, ...rest } = inp;\nreturn {\n  json: {\n    ...rest,\n    ai, ai_text, ai_error,\n    ai_meta: {\n      skill: b.skill, caller: b.caller || '', client: b.client || '', model: res.model || cfg.model,\n      stop_reason: res.stop_reason || 'error', input_tokens: u.input_tokens || 0,\n      output_tokens: u.output_tokens || 0, cache_read_tokens: u.cache_read_input_tokens || 0,\n      cache_write_tokens: u.cache_creation_input_tokens || 0, cost_usd: Number(cost.toFixed(5)),\n    },\n  },\n};\n"
+      },
+      "id": "513f3a7f-3a57-4e67-8c0b-771eef989b6e",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const m = $json.ai_meta;\nreturn { json: {\n  timestamp: new Date().toISOString(), caller: m.caller, client: m.client, skill: m.skill, model: m.model,\n  input_tokens: m.input_tokens, output_tokens: m.output_tokens, cache_read_tokens: m.cache_read_tokens,\n  cache_write_tokens: m.cache_write_tokens, est_cost_usd: m.cost_usd, stop_reason: m.stop_reason,\n  error: $json.ai_error || '',\n} };\n"
+      },
+      "id": "7ede4c77-5463-4282-8da0-0e6fc05c5103",
+      "name": "Ledger Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Brain Config').first().json._cfg.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "AI Ledger"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caller",
+              "displayName": "caller",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client",
+              "displayName": "client",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "skill",
+              "displayName": "skill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "input_tokens",
+              "displayName": "input_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "output_tokens",
+              "displayName": "output_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cache_read_tokens",
+              "displayName": "cache_read_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cache_write_tokens",
+              "displayName": "cache_write_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "est_cost_usd",
+              "displayName": "est_cost_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stop_reason",
+              "displayName": "stop_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c2a8e091-47ac-4bca-802d-2528cfa772b9",
+      "name": "Log to AI Ledger",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Parse Response').all();\n"
+      },
+      "id": "36c90c23-a8de-4465-bef8-a4858ec9dea7",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Brain Input": {
+      "main": [
+        [
+          {
+            "node": "Brain Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Skill Playbook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Skill Playbook": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request": {
+      "main": [
+        [
+          {
+            "node": "Call Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Ledger Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ledger Row": {
+      "main": [
+        [
+          {
+            "node": "Log to AI Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to AI Ledger": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

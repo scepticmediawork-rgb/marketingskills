@@ -1,0 +1,107 @@
+{
+  "name": "Agency OS 99 \u00b7 Error Guardian",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Error Guardian\nSet this as the **Error Workflow** in the settings of every Agency OS workflow. Any failure posts the workflow, failing node, message, and a link to the execution in Slack.",
+        "height": 220,
+        "width": 460,
+        "color": 4
+      },
+      "id": "b8af1282-92c2-46e6-a811-4d7476df99c6",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "55ef015d-8749-4f2e-b015-d0c27b08390a",
+      "name": "On Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $json;\nconst ex = e.execution || {}; const t = e.trigger || {};\nconst where = ex.lastNodeExecuted ? ` at node *${ex.lastNodeExecuted}*` : '';\nconst msg = ex.error?.message || t.error?.message || 'Unknown error';\nconst link = ex.url ? `\\n<${ex.url}|Open execution>` : '';\nreturn [{ json: { text: `:rotating_light: *${e.workflow?.name || 'A workflow'}* failed${where}\\n> ${String(msg).slice(0, 500)}${link}` } }];\n"
+      },
+      "id": "7fca508e-10de-4003-bd26-ece10361d5bd",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#agency-ops"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "6221afd9-9234-48f4-a345-c5445b065209",
+      "name": "Alert Ops",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        200
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "Alert Ops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

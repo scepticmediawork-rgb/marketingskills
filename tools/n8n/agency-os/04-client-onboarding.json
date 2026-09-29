@@ -1,0 +1,1158 @@
+{
+  "name": "Agency OS 04 \u00b7 Client Onboarding Autopilot",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Client Onboarding Autopilot\nWhen a deal closes, the AM submits one form. Then:\n1. Creates the client's **Google Drive folder** and a **Slack channel**.\n2. **Brain (product-marketing)** writes the client's positioning and ICP context doc, saved to Drive. Every later AI step can reuse it.\n3. **Brain (marketing-plan)** builds a 90-day plan with a north-star metric, goals, phases and quick wins.\n4. Registers the client in **Clients**, emails a branded welcome and kickoff plan, and posts the plan in Slack.\n5. After **3 days**, reminds the AM to confirm access (GA4, ad accounts, CMS) and that the kickoff happened.",
+        "height": 330,
+        "width": 640,
+        "color": 4
+      },
+      "id": "b1de0404-cadb-46fa-8397-4790aeb486fa",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "New client signed",
+        "formDescription": "Internal: starts onboarding automatically.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Client name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Website",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Primary contact name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Primary contact email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Account manager email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Services",
+              "fieldType": "dropdown",
+              "multiselect": true,
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "SEO"
+                  },
+                  {
+                    "option": "Paid Ads"
+                  },
+                  {
+                    "option": "Social Media"
+                  },
+                  {
+                    "option": "Content"
+                  },
+                  {
+                    "option": "Email"
+                  },
+                  {
+                    "option": "CRO / Website"
+                  },
+                  {
+                    "option": "Reporting"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Monthly retainer (USD)",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Goals for the first 90 days",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Target audience",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Brand voice",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Competitor URLs (comma separated)",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "GA4 property ID"
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Onboarding started: folder, channel, strategy doc and 90-day plan are on the way."
+            }
+          }
+        }
+      },
+      "id": "f3cab349-aa62-4776-8fed-64a02c68e6e5",
+      "name": "Client Signed Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        400
+      ],
+      "webhookId": "95227fcd-35c7-4820-b690-38b3d1f0258f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "36d6a9c8-e559-4d1a-ba08-ef9d127cc1ef",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "664a7849-0a5c-4eff-aa0c-0929910d957b",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "8e2ba5ba-32d5-4fd8-af89-58b52ebd9898",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "670a0017-60ee-4428-b259-f0f65da23765",
+              "name": "drive_parent_folder_id",
+              "type": "string",
+              "value": "root"
+            },
+            {
+              "id": "c15a3d0b-8405-4ec3-9da3-c4196c230cf4",
+              "name": "kickoff_booking_link",
+              "type": "string",
+              "value": "https://cal.com/your-agency/kickoff"
+            },
+            {
+              "id": "6facbda2-073d-43bc-9f91-84a7daa80230",
+              "name": "slack_ops_channel",
+              "type": "string",
+              "value": "#agency-ops"
+            },
+            {
+              "id": "09a3bbcc-fefa-43a1-aad8-fb98691f979a",
+              "name": "onboarding_form_link",
+              "type": "string",
+              "value": "https://your-agency.com/access-checklist"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "54479c22-7533-4ba5-bec4-3e9ffa3795f0",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const services = [].concat($json['Services'] || []).join(', ');\nconst name = String($json['Client name']).trim();\nconst slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);\nlet website = String($json['Website'] || '').trim();\nif (website && !/^https?:\\/\\//i.test(website)) website = 'https://' + website;\nreturn { json: {\n  client_id: `${slug}-${Date.now().toString(36).slice(-4)}`, client_name: name, status: 'active', website,\n  contact_name: $json['Primary contact name'], contact_email: $json['Primary contact email'],\n  account_manager_email: $json['Account manager email'], services, retainer_usd: Number($json['Monthly retainer (USD)']) || 0,\n  start_date: new Date().toISOString().slice(0, 10), ga4_property_id: String($json['GA4 property ID'] || '').replace(/\\D/g, ''),\n  brand_voice: $json['Brand voice'] || '', audience: $json['Target audience'] || '', goals: $json['Goals for the first 90 days'] || '',\n  competitors: $json['Competitor URLs (comma separated)'] || '', channel_name: `client-${slug}`.slice(0, 80),\n} };\n"
+      },
+      "id": "737403de-5ae8-4273-bdfd-2befcf25fd71",
+      "name": "Normalize Client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $json.client_name }} (Agency OS)",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.drive_parent_folder_id }}"
+        },
+        "options": {}
+      },
+      "id": "40b484a7-9672-4dca-b53f-3389f728d393",
+      "name": "Create Drive Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        720,
+        400
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "Google Drive (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "create",
+        "channelId": "={{ $('Normalize Client').item.json.channel_name }}",
+        "channelVisibility": "private"
+      },
+      "id": "13bb26e6-d632-47b3-81f4-49df585f44f9",
+      "name": "Create Slack Channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const c = $('Normalize Client').item.json;\nconst folder = $('Create Drive Folder').item.json;\nconst channel = $json;\nreturn { json: { ...c, drive_folder_id: folder.id || '', slack_channel_id: channel.id || '', brain: {\n  skill: 'product-marketing', caller: 'Onboarding', client: c.client_name, effort: 'high', max_tokens: 12000,\n  context: { client: c.client_name, website: c.website, services_bought: c.services, goals: c.goals, audience: c.audience, brand_voice: c.brand_voice, competitors: c.competitors },\n  task: `Create the product marketing context document for ${c.client_name}, following your playbook's structure, in Markdown. This document will be reused as context by every future AI task for this client, so be specific and mark assumptions to validate at kickoff with \"[validate]\".`,\n} } };\n"
+      },
+      "id": "d9051998-1e5d-4c62-ad5d-91cb2b5218f4",
+      "name": "Prep Positioning Doc",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "cec54879-6075-4e48-9543-35d72a9790b9",
+      "name": "Brain: Positioning Doc",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $json;\nconst schema = { type: 'object', additionalProperties: false,\n  required: ['north_star_metric', 'goals', 'phases', 'quick_wins_first_2_weeks', 'access_needed', 'risks', 'kickoff_agenda'],\n  properties: { north_star_metric: { type: 'string' },\n    goals: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['goal', 'metric', 'target'], properties: { goal: { type: 'string' }, metric: { type: 'string' }, target: { type: 'string' } } } },\n    phases: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['name', 'weeks', 'focus', 'initiatives'],\n      properties: { name: { type: 'string' }, weeks: { type: 'string' }, focus: { type: 'string' }, initiatives: { type: 'array', items: { type: 'string' } } } } },\n    quick_wins_first_2_weeks: { type: 'array', items: { type: 'string' } }, access_needed: { type: 'array', items: { type: 'string' } },\n    risks: { type: 'array', items: { type: 'string' } }, kickoff_agenda: { type: 'array', items: { type: 'string' } } } };\nconst { ai, ai_text, ai_error, ai_meta, ...rest } = x;\nreturn { json: { ...rest, context_md: typeof ai === 'string' ? ai : `Context doc generation failed: ${ai_error}`, brain: {\n  skill: 'marketing-plan', caller: 'Onboarding', client: x.client_name, effort: 'high', max_tokens: 12000, schema,\n  context: { client: x.client_name, services_bought: x.services, monthly_retainer_usd: x.retainer_usd, goals: x.goals, positioning_doc: typeof ai === 'string' ? ai : '' },\n  task: 'Build a 90-day marketing plan scoped strictly to the services this client bought and a realistic workload for the retainer. Use three phases (weeks 1-4, 5-8, 9-12). Include what platform access we need on day one and a 45-minute kickoff agenda.',\n} } };\n"
+      },
+      "id": "fd90e4c5-f56a-4921-b90d-1099376beac0",
+      "name": "Prep 90-Day Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "3ffb0627-f07e-4748-abc2-1e1c8a87ee90",
+      "name": "Brain: 90-Day Plan",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $json;\nreturn { json: { client_id: x.client_id, client_name: x.client_name, status: 'active', website: x.website, contact_name: x.contact_name,\n  contact_email: x.contact_email, account_manager_email: x.account_manager_email, services: x.services, retainer_usd: x.retainer_usd,\n  start_date: x.start_date, ga4_property_id: x.ga4_property_id, slack_channel_id: x.slack_channel_id, drive_folder_id: x.drive_folder_id,\n  ayrshare_profile_key: '', brand_voice: x.brand_voice, audience: x.audience, goals: x.goals, competitors: x.competitors,\n  last_client_reply: x.start_date, invoices_overdue: 0, health_score: '', health_status: 'onboarding' } };\n"
+      },
+      "id": "72db8fdd-7830-40d8-b63d-32a285dbaf80",
+      "name": "Client Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clients"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_name",
+              "displayName": "contact_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_email",
+              "displayName": "contact_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "account_manager_email",
+              "displayName": "account_manager_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "services",
+              "displayName": "services",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retainer_usd",
+              "displayName": "retainer_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ga4_property_id",
+              "displayName": "ga4_property_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slack_channel_id",
+              "displayName": "slack_channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "drive_folder_id",
+              "displayName": "drive_folder_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ayrshare_profile_key",
+              "displayName": "ayrshare_profile_key",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "brand_voice",
+              "displayName": "brand_voice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "audience",
+              "displayName": "audience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goals",
+              "displayName": "goals",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competitors",
+              "displayName": "competitors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_client_reply",
+              "displayName": "last_client_reply",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invoices_overdue",
+              "displayName": "invoices_overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "health_score",
+              "displayName": "health_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "health_status",
+              "displayName": "health_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f51991c3-3fcb-420a-985e-41fc4f59ad74",
+      "name": "Register Client",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2400,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $('Brain: 90-Day Plan').all()) {\n  const c = item.json;\n  for (const url of String(c.competitors || '').split(/[\\s,]+/).filter((u) => /\\./.test(u))) {\n    out.push({ json: { client_id: c.client_id, competitor_url: /^https?:/.test(url) ? url : `https://${url}`, last_checked: '', last_snapshot: '', last_change_summary: '' } });\n  }\n}\nreturn out;\n"
+      },
+      "id": "ed49c6f5-e9c2-4c25-8b89-f9e34b5c8533",
+      "name": "Seed Competitors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Competitors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "client_id",
+              "displayName": "client_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "competitor_url",
+              "displayName": "competitor_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_snapshot",
+              "displayName": "last_snapshot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_change_summary",
+              "displayName": "last_change_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ed3442cc-0e97-444f-85ca-ceaf5c7b99d9",
+      "name": "Add Competitors",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2880,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $('Brain: 90-Day Plan').item.json;\nreturn { json: { client_name: x.client_name, drive_folder_id: x.drive_folder_id, context_md: x.context_md } };\n"
+      },
+      "id": "f2bb7a3d-0fdb-4ba4-992b-cec902f076e4",
+      "name": "Doc Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "context_md",
+        "options": {
+          "fileName": "={{ $json.client_name }} - Positioning & ICP context.md"
+        }
+      },
+      "id": "dcdcd9a6-09dd-4235-98a3-aebd19d5807b",
+      "name": "Positioning Doc File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2880,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Doc Payload').item.json.client_name }} - Positioning & ICP context.md",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Doc Payload').item.json.drive_folder_id || $('Config').first().json.drive_parent_folder_id }}"
+        },
+        "options": {}
+      },
+      "id": "0c28aca6-ddd9-40c5-ad6d-29e2eb35e93a",
+      "name": "Save Doc to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3120,
+        600
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "Google Drive (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const esc = (s) => String(s ?? '').replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst li = (arr) => (arr || []).map((t) => `<li style=\"margin:0 0 6px\">${esc(t)}</li>`).join('');\nconst card = (title, inner) => `<div style=\"border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;margin:0 0 16px\"><h3 style=\"margin:0 0 10px;font-size:16px;color:#111827\">${esc(title)}</h3>${inner}</div>`;\nconst shell = (title, sub, inner) => `<div style=\"font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;color:#1f2937;line-height:1.5\"><div style=\"padding:24px 0 8px\"><div style=\"font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280\">${esc(sub)}</div><h1 style=\"margin:4px 0 0;font-size:24px;color:#111827\">${esc(title)}</h1></div>${inner}</div>`;\nconst pct = (v) => (v === null || v === undefined || Number.isNaN(v)) ? 'n/a' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;\n\nconst x = $('Brain: 90-Day Plan').item.json; const p = x.ai || {};\nconst cfg = $('Config').first().json;\nconst first = String(x.contact_name || '').split(' ')[0] || 'there';\nconst goals = (p.goals || []).map((g) => `<li style=\"margin:0 0 6px\"><b>${esc(g.goal)}</b>: ${esc(g.metric)} \u2192 ${esc(g.target)}</li>`).join('');\nconst phases = (p.phases || []).map((ph) => `<li style=\"margin:0 0 8px\"><b>${esc(ph.name)} (${esc(ph.weeks)})</b>: ${esc(ph.focus)}<ul style=\"padding-left:18px\">${li(ph.initiatives)}</ul></li>`).join('');\nconst html = shell(`Welcome aboard, ${x.client_name}!`, `${cfg.agency_name} \u00b7 your first 90 days`,\n  `<p>Hi ${esc(first)},</p><p>We're excited to get started. Here's the plan we'll walk through at kickoff. It's a draft, and we'll shape it together.</p>`\n  + card('North-star metric', `<p style=\"margin:0;font-size:18px;font-weight:700\">${esc(p.north_star_metric)}</p>`)\n  + card('Goals', `<ul style=\"padding-left:18px;margin:0\">${goals}</ul>`)\n  + card('The plan', `<ul style=\"padding-left:18px;margin:0\">${phases}</ul>`)\n  + card('Quick wins in the first 2 weeks', `<ul style=\"padding-left:18px;margin:0\">${li(p.quick_wins_first_2_weeks)}</ul>`)\n  + card('What we need from you', `<ul style=\"padding-left:18px;margin:0\">${li(p.access_needed)}</ul><p style=\"margin:10px 0 0\">Access checklist: <a href=\"${esc(cfg.onboarding_form_link)}\">${esc(cfg.onboarding_form_link)}</a></p>`)\n  + `<p style=\"margin:20px 0\"><a href=\"${esc(cfg.kickoff_booking_link)}\" style=\"background:#4f46e5;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600\">Book your kickoff call</a></p>`\n  + `<p>Talk soon,<br>The ${esc(cfg.agency_name)} team</p>`);\nconst slack_text = `:tada: *${x.client_name} is live!* Retainer $${x.retainer_usd}/mo \u00b7 ${x.services}\\n*North star:* ${p.north_star_metric || 'n/a'}\\n*Quick wins:*\\n${(p.quick_wins_first_2_weeks || []).map((w) => `\u2022 ${w}`).join('\\n')}\\n*Risks:*\\n${(p.risks || []).map((w) => `\u2022 ${w}`).join('\\n')}\\n*Kickoff agenda:*\\n${(p.kickoff_agenda || []).map((w, i) => `${i + 1}. ${w}`).join('\\n')}`;\nreturn { json: { ...x, subject: `Welcome to ${cfg.agency_name}: your 90-day plan`, html, slack_text } };\n"
+      },
+      "id": "417273e4-77c1-4315-b94a-d66ccc99df5a",
+      "name": "Render Welcome Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.contact_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "={{ $json.account_manager_email }}"
+        }
+      },
+      "id": "4573f2ab-b81c-4d4a-87cf-5d7eca8e9612",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2880,
+        400
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7e05af3e-641f-4939-a871-430fc286683e",
+              "leftValue": "={{ $('Render Welcome Email').item.json.slack_channel_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "820769cb-69e4-40ef-b90c-8a80daab79e2",
+      "name": "Has Slack Channel?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Render Welcome Email').item.json.slack_channel_id }}"
+        },
+        "text": "={{ $('Render Welcome Email').item.json.slack_text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "ab3344af-1923-4854-a081-b65d5cf4ffb0",
+      "name": "Post Plan in Client Channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3360,
+        200
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_ops_channel }}"
+        },
+        "text": "={{ $('Render Welcome Email').item.json.slack_text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "a0612bfa-1ae1-4942-b28f-fbc5ee5f49ee",
+      "name": "Post Plan in Ops",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3360,
+        600
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "days"
+      },
+      "id": "92d569f9-de3e-40e5-81e4-b06061d22c13",
+      "name": "Wait 3 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        400
+      ],
+      "webhookId": "f2e13211-e386-4ce0-a325-741170aeea4f"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_ops_channel }}"
+        },
+        "text": "=:mag: *Day-3 onboarding check: {{ $('Render Welcome Email').item.json.client_name }}*\n<!here> AM {{ $('Render Welcome Email').item.json.account_manager_email }}, please confirm:\n\u2022 Kickoff call held?\n\u2022 Access granted: {{ ($('Render Welcome Email').item.json.ai?.access_needed || []).join(', ') }}\n\u2022 GA4 property ID in the Clients sheet? (needed for reports and the anomaly sentinel)\n\u2022 Positioning doc [validate] items reviewed?",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "48af2984-2108-4631-8e6d-cbe82366af23",
+      "name": "Day-3 Access Check",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3840,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Client Signed Form": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Client": {
+      "main": [
+        [
+          {
+            "node": "Create Drive Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Drive Folder": {
+      "main": [
+        [
+          {
+            "node": "Create Slack Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Slack Channel": {
+      "main": [
+        [
+          {
+            "node": "Prep Positioning Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Positioning Doc": {
+      "main": [
+        [
+          {
+            "node": "Brain: Positioning Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Positioning Doc": {
+      "main": [
+        [
+          {
+            "node": "Prep 90-Day Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep 90-Day Plan": {
+      "main": [
+        [
+          {
+            "node": "Brain: 90-Day Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: 90-Day Plan": {
+      "main": [
+        [
+          {
+            "node": "Client Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Row": {
+      "main": [
+        [
+          {
+            "node": "Register Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Client": {
+      "main": [
+        [
+          {
+            "node": "Seed Competitors",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Render Welcome Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Doc Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seed Competitors": {
+      "main": [
+        [
+          {
+            "node": "Add Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doc Payload": {
+      "main": [
+        [
+          {
+            "node": "Positioning Doc File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Positioning Doc File": {
+      "main": [
+        [
+          {
+            "node": "Save Doc to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Has Slack Channel?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Slack Channel?": {
+      "main": [
+        [
+          {
+            "node": "Post Plan in Client Channel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post Plan in Ops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Plan in Client Channel": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Plan in Ops": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 Days",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 Days": {
+      "main": [
+        [
+          {
+            "node": "Day-3 Access Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

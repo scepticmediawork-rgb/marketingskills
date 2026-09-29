@@ -1,0 +1,806 @@
+{
+  "name": "Agency OS 03 \u00b7 Instant Audit & Proposal",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Instant Audit & Proposal\nAfter a discovery call, a strategist fills in the form. In about 3 minutes the account manager receives a **review-ready proposal email**:\n1. Crawls the homepage, robots.txt and sitemap.xml and computes ~25 technical signals deterministically.\n2. **Brain (seo-audit)**: SEO score, critical issues with evidence, quick wins.\n3. **Brain (cro)**: value-prop and friction review, and A/B test ideas.\n4. **Brain (sales-enablement)**: diagnosis, strategy pillars, 3 priced packages, and a 90-day roadmap.\n5. Emails a formatted proposal to the AM, logs it to **Proposals**, and pings Slack.",
+        "height": 330,
+        "width": 640,
+        "color": 4
+      },
+      "id": "a9ada7a5-1572-4c16-a8cc-cca73bebd22e",
+      "name": "Note 0",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Generate audit + proposal",
+        "formDescription": "Internal: fill this after the discovery call.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Company",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Website URL",
+              "requiredField": true,
+              "placeholder": "https://example.com"
+            },
+            {
+              "fieldLabel": "Contact name"
+            },
+            {
+              "fieldLabel": "Contact email",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "Primary goal",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "More qualified leads"
+                  },
+                  {
+                    "option": "More online sales"
+                  },
+                  {
+                    "option": "Lower acquisition cost"
+                  },
+                  {
+                    "option": "Launch a new offer"
+                  },
+                  {
+                    "option": "Brand awareness"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Monthly budget (USD)",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Discovery call notes",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Send proposal to (AM email)",
+              "fieldType": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Audit running. The proposal will land in your inbox in about 3 minutes."
+            }
+          }
+        }
+      },
+      "id": "a5c093eb-285d-4242-97f6-1813b9e539e3",
+      "name": "Discovery Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        400
+      ],
+      "webhookId": "80fd00a7-37aa-44d2-b600-f86f4c88f3e4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8a1dbae5-e07e-4b08-a025-2e77d930db12",
+              "name": "sheet_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_DB_SHEET_ID"
+            },
+            {
+              "id": "1b3a11a7-01e0-459b-b12a-beb69889c8b8",
+              "name": "brain_workflow_id",
+              "type": "string",
+              "value": "PASTE_AGENCY_BRAIN_WORKFLOW_ID"
+            },
+            {
+              "id": "3651f8a5-28d3-480f-9971-f4ae9dccd5de",
+              "name": "agency_name",
+              "type": "string",
+              "value": "Your Agency"
+            },
+            {
+              "id": "316e5bf1-bb2c-4017-855c-52f818f0b8a8",
+              "name": "slack_sales_channel",
+              "type": "string",
+              "value": "#agency-sales"
+            },
+            {
+              "id": "d80e4d82-c4d9-4276-b4b2-917e5f822e2f",
+              "name": "currency",
+              "type": "string",
+              "value": "USD"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "0a396fb4-dd4d-4b3d-bca5-b5ea84736df9",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let url = String($json['Website URL'] || '').trim();\nif (!/^https?:\\/\\//i.test(url)) url = 'https://' + url;\nconst u = new URL(url);\nreturn { json: {\n  company: $json['Company'], website: u.href, origin: u.origin, contact_name: $json['Contact name'] || '',\n  contact_email: $json['Contact email'] || '', goal: $json['Primary goal'], budget: Number($json['Monthly budget (USD)']) || 0,\n  notes: $json['Discovery call notes'] || '', am_email: $json['Send proposal to (AM email)'],\n} };\n"
+      },
+      "id": "16a6a97e-616e-4c8f-91df-a8bc9b9c04c1",
+      "name": "Normalize Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.website }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html",
+              "fullResponse": true
+            }
+          },
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "allowUnauthorizedCerts": false
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; AgencyOS-Audit/1.0)"
+            }
+          ]
+        }
+      },
+      "id": "a0c5fe49-6370-40e6-9e1a-7aa44e347893",
+      "name": "Fetch Homepage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Normalize Brief').item.json.origin }}/robots.txt",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html",
+              "fullResponse": true
+            }
+          },
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "allowUnauthorizedCerts": false
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; AgencyOS-Audit/1.0)"
+            }
+          ]
+        }
+      },
+      "id": "ad3bf750-5fcf-4474-b460-56881de8695a",
+      "name": "Fetch robots.txt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Normalize Brief').item.json.origin }}/sitemap.xml",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html",
+              "fullResponse": true
+            }
+          },
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          },
+          "allowUnauthorizedCerts": false
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; AgencyOS-Audit/1.0)"
+            }
+          ]
+        }
+      },
+      "id": "cba92f73-3334-4f73-947e-cc6387f551ab",
+      "name": "Fetch sitemap.xml",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stripHtml = (h) => String(h || '')\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<noscript[\\s\\S]*?<\\/noscript>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, \"'\").replace(/&quot;/g, '\"')\n  .replace(/\\s+/g, ' ').trim();\nconst grab = (h, re) => { const m = String(h || '').match(re); return m ? stripHtml(m[1]).slice(0, 300) : ''; };\nconst grabAll = (h, re, n = 10) => [...String(h || '').matchAll(re)].map((m) => stripHtml(m[1])).filter(Boolean).slice(0, n);\n\nconst brief = $('Normalize Brief').item.json;\nconst home = $('Fetch Homepage').item.json;\nconst robots = $('Fetch robots.txt').item.json;\nconst sitemap = $('Fetch sitemap.xml').item.json;\nconst html = typeof home.html === 'string' ? home.html : (typeof home.body === 'string' ? home.body : '');\nconst ok = (r) => r && !r.error && (r.statusCode === undefined || r.statusCode < 400);\nconst bodyOf = (r) => String(r?.html ?? r?.body ?? '');\nconst attr = (re) => (html.match(re) || [])[1] || '';\nconst imgs = [...html.matchAll(/<img\\b[^>]*>/gi)].map((m) => m[0]);\nconst links = [...html.matchAll(/<a\\b[^>]*href=[\"']([^\"'#]+)/gi)].map((m) => m[1]);\nconst host = new URL(brief.website).host;\nconst internal = links.filter((l) => l.startsWith('/') || l.includes(host)).length;\nconst text = stripHtml(html);\nconst title = grab(html, /<title[^>]*>([\\s\\S]*?)<\\/title>/i);\nconst metaDesc = attr(/<meta[^>]+name=[\"']description[\"'][^>]+content=[\"']([^\"']*)/i);\nconst jsonLdTypes = [...html.matchAll(/\"@type\"\\s*:\\s*\"([^\"]+)\"/g)].map((m) => m[1]);\nconst robotsTxt = bodyOf(robots);\nconst signals = {\n  reachable: !!html, status_code: home.statusCode ?? null, https: brief.website.startsWith('https://'),\n  title, title_length: title.length, meta_description: metaDesc, meta_description_length: metaDesc.length,\n  h1: grabAll(html, /<h1[^>]*>([\\s\\S]*?)<\\/h1>/gi, 5), h2: grabAll(html, /<h2[^>]*>([\\s\\S]*?)<\\/h2>/gi, 12),\n  canonical: attr(/<link[^>]+rel=[\"']canonical[\"'][^>]+href=[\"']([^\"']*)/i),\n  meta_robots: attr(/<meta[^>]+name=[\"']robots[\"'][^>]+content=[\"']([^\"']*)/i),\n  viewport: /<meta[^>]+name=[\"']viewport[\"']/i.test(html), html_lang: attr(/<html[^>]+lang=[\"']([^\"']*)/i),\n  og_title: /property=[\"']og:title[\"']/i.test(html), og_image: /property=[\"']og:image[\"']/i.test(html),\n  structured_data_types: [...new Set(jsonLdTypes)].slice(0, 15),\n  images: imgs.length, images_missing_alt: imgs.filter((t) => !/\\balt=[\"'][^\"']+[\"']/i.test(t)).length,\n  internal_links: internal, external_links: links.length - internal, forms: (html.match(/<form\\b/gi) || []).length,\n  buttons_and_ctas: grabAll(html, /<(?:button|a)[^>]*class=[\"'][^\"']*(?:btn|button|cta)[^\"']*[\"'][^>]*>([\\s\\S]*?)<\\/(?:button|a)>/gi, 12),\n  word_count: text ? text.split(' ').length : 0, html_kb: Math.round(html.length / 1024),\n  scripts: (html.match(/<script\\b/gi) || []).length,\n  robots_txt_found: ok(robots) && /user-agent/i.test(robotsTxt),\n  robots_blocks_all: /user-agent:\\s*\\*\\s*[\\r\\n]+\\s*disallow:\\s*\\/\\s*$/im.test(robotsTxt),\n  sitemap_found: ok(sitemap) && /<(urlset|sitemapindex)/i.test(bodyOf(sitemap)),\n  tracking: Object.entries({ 'GA4 (gtag)': /gtag\\(|googletagmanager\\.com\\/gtag/, 'Google Tag Manager': /GTM-[A-Z0-9]+/, 'Meta Pixel': /connect\\.facebook\\.net|fbq\\(/,\n    'LinkedIn Insight': /snap\\.licdn\\.com/, 'Hotjar': /hotjar/i, 'Microsoft Clarity': /clarity\\.ms/ }).filter(([, re]) => re.test(html)).map(([k]) => k),\n};\nconst page_copy = text.slice(0, 6000);\n\nconst issue = { type: 'object', additionalProperties: false, required: ['issue', 'evidence', 'impact', 'fix'],\n  properties: { issue: { type: 'string' }, evidence: { type: 'string' }, impact: { type: 'string', enum: ['high', 'medium', 'low'] }, fix: { type: 'string' } } };\nconst schema = { type: 'object', additionalProperties: false,\n  required: ['seo_score', 'summary', 'critical_issues', 'quick_wins', 'opportunities'],\n  properties: { seo_score: { type: 'integer', description: '0-100' }, summary: { type: 'string' },\n    critical_issues: { type: 'array', items: issue }, quick_wins: { type: 'array', items: { type: 'string' } },\n    opportunities: { type: 'array', items: { type: 'string' } } } };\nreturn { json: { ...brief, signals, page_copy, brain: {\n  skill: 'seo-audit', caller: 'Audit & Proposal', client: brief.company, effort: 'high', max_tokens: 12000, schema,\n  context: { company: brief.company, url: brief.website, goal: brief.goal, technical_signals: signals, homepage_copy: page_copy },\n  task: 'Run an SEO audit of this homepage using only the crawl signals and copy provided (you cannot fetch more pages). Score 0-100. List the most important issues, each with the exact evidence from the signals, its impact, and a concrete fix. Add quick wins that take under a day, and bigger opportunities. Say where a full crawl would be needed to confirm something.',\n} } };\n"
+      },
+      "id": "02ad90c6-e482-47ca-b5e2-355e7a4fe71b",
+      "name": "Technical Signals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "59b58dd0-22b6-4907-872d-f2dcf2dd094c",
+      "name": "Brain: SEO Audit",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $json;\nconst schema = { type: 'object', additionalProperties: false,\n  required: ['cro_score', 'value_prop_assessment', 'friction_points', 'experiments'],\n  properties: { cro_score: { type: 'integer', description: '0-100' }, value_prop_assessment: { type: 'string' },\n    friction_points: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['issue', 'evidence', 'fix'],\n      properties: { issue: { type: 'string' }, evidence: { type: 'string' }, fix: { type: 'string' } } } },\n    experiments: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['hypothesis', 'change', 'primary_metric', 'expected_impact'],\n      properties: { hypothesis: { type: 'string' }, change: { type: 'string' }, primary_metric: { type: 'string' }, expected_impact: { type: 'string', enum: ['high', 'medium', 'low'] } } } } } };\nconst { ai, ai_text, ai_error, ai_meta, ...rest } = x;\nreturn { json: { ...rest, seo: ai || { seo_score: null, summary: ai_error, critical_issues: [], quick_wins: [], opportunities: [] }, brain: {\n  skill: 'cro', caller: 'Audit & Proposal', client: x.company, effort: 'high', max_tokens: 10000, schema,\n  context: { company: x.company, goal: x.goal, discovery_notes: x.notes, headings: { h1: x.signals.h1, h2: x.signals.h2 }, ctas: x.signals.buttons_and_ctas, forms: x.signals.forms, homepage_copy: x.page_copy },\n  task: 'Review this homepage for conversion against the prospect\\'s primary goal. Assess the value proposition (clarity, relevance, differentiation), list friction points with the evidence, and propose the 3-5 highest-leverage A/B tests. Score 0-100.',\n} } };\n"
+      },
+      "id": "b8e17874-7fb8-48f1-a4ca-54edfd39d048",
+      "name": "Prep CRO Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "971fb2e4-c8e3-41d3-a659-2165866f6db3",
+      "name": "Brain: CRO Review",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $json;\nconst pkg = { type: 'object', additionalProperties: false, required: ['name', 'monthly_price_usd', 'best_for', 'deliverables', 'expected_outcomes'],\n  properties: { name: { type: 'string' }, monthly_price_usd: { type: 'integer' }, best_for: { type: 'string' },\n    deliverables: { type: 'array', items: { type: 'string' } }, expected_outcomes: { type: 'array', items: { type: 'string' } } } };\nconst schema = { type: 'object', additionalProperties: false,\n  required: ['headline', 'executive_summary', 'diagnosis', 'strategy_pillars', 'packages', 'recommended_package', 'first_90_days', 'roi_rationale', 'next_steps'],\n  properties: { headline: { type: 'string' }, executive_summary: { type: 'string' }, diagnosis: { type: 'array', items: { type: 'string' } },\n    strategy_pillars: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['title', 'why', 'what_we_do'],\n      properties: { title: { type: 'string' }, why: { type: 'string' }, what_we_do: { type: 'string' } } } },\n    packages: { type: 'array', items: pkg }, recommended_package: { type: 'string' },\n    first_90_days: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['phase', 'focus', 'milestones'],\n      properties: { phase: { type: 'string' }, focus: { type: 'string' }, milestones: { type: 'array', items: { type: 'string' } } } } },\n    roi_rationale: { type: 'string' }, next_steps: { type: 'array', items: { type: 'string' } } } };\nconst { ai, ai_text, ai_error, ai_meta, ...rest } = x;\nconst cfg = $('Config').first().json;\nreturn { json: { ...rest, cro: ai || { cro_score: null, value_prop_assessment: ai_error, friction_points: [], experiments: [] }, brain: {\n  skill: 'sales-enablement', caller: 'Audit & Proposal', client: x.company, effort: 'high', max_tokens: 16000, schema,\n  context: { agency: cfg.agency_name, company: x.company, website: x.website, goal: x.goal, monthly_budget_usd: x.budget, discovery_notes: x.notes, seo_audit: x.seo, cro_review: x.cro },\n  task: `Write a deal-specific proposal from ${cfg.agency_name} to ${x.company}. Lead with their goal and the audit evidence, not our services. Give exactly 3 packages (good/better/best); the middle one must fit the stated budget of $${x.budget}/month and should be the recommended one. Each package lists concrete deliverables and realistic, non-guaranteed outcomes. The 90-day plan has three 30-day phases. Keep the ROI rationale honest and assumption-based.`,\n} } };\n"
+      },
+      "id": "1e68cf82-8efd-436b-b3ac-cb1dce5c563e",
+      "name": "Prep Proposal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.brain_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "0703a6ec-4d24-4b43-bc35-bfee8194d8d9",
+      "name": "Brain: Write Proposal",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const esc = (s) => String(s ?? '').replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst li = (arr) => (arr || []).map((t) => `<li style=\"margin:0 0 6px\">${esc(t)}</li>`).join('');\nconst card = (title, inner) => `<div style=\"border:1px solid #e5e7eb;border-radius:10px;padding:18px 20px;margin:0 0 16px\"><h3 style=\"margin:0 0 10px;font-size:16px;color:#111827\">${esc(title)}</h3>${inner}</div>`;\nconst shell = (title, sub, inner) => `<div style=\"font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;color:#1f2937;line-height:1.5\"><div style=\"padding:24px 0 8px\"><div style=\"font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280\">${esc(sub)}</div><h1 style=\"margin:4px 0 0;font-size:24px;color:#111827\">${esc(title)}</h1></div>${inner}</div>`;\nconst pct = (v) => (v === null || v === undefined || Number.isNaN(v)) ? 'n/a' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;\n\nconst x = $json; const p = x.ai || {}; const seo = x.seo || {}; const cro = x.cro || {};\nconst clamp = (v) => (v === null || v === undefined || v === '' ? null : Math.max(0, Math.min(100, Math.round(Number(v)))));\nseo.seo_score = clamp(seo.seo_score); cro.cro_score = clamp(cro.cro_score);\nconst norm = (s) => String(s || '').trim().toLowerCase();\nconst recPkg = (p.packages || []).find((k) => norm(k.name) === norm(p.recommended_package)) || (p.packages || [])[1] || (p.packages || [])[0] || {};\np.recommended_package = recPkg.name || '';\nconst cfg = $('Config').first().json;\nif (x.ai_error) {\n  return { json: { ...x, subject: `[Needs attention] Proposal for ${x.company} failed`, html: `<p>The proposal step failed: ${esc(x.ai_error)}</p>` } };\n}\nconst score = (label, v) => `<td style=\"padding:12px 16px;border:1px solid #e5e7eb;border-radius:8px;text-align:center\"><div style=\"font-size:28px;font-weight:700;color:#111827\">${v ?? '\u2013'}</div><div style=\"font-size:12px;color:#6b7280\">${label}</div></td>`;\nconst issues = (seo.critical_issues || []).map((i) => `<li style=\"margin:0 0 8px\"><b>${esc(i.issue)}</b> <span style=\"font-size:12px;color:#b45309\">[${esc(i.impact)}]</span><br><span style=\"color:#6b7280\">${esc(i.evidence)}</span><br>\u2192 ${esc(i.fix)}</li>`).join('');\nconst friction = (cro.friction_points || []).map((f) => `<li style=\"margin:0 0 8px\"><b>${esc(f.issue)}</b><br><span style=\"color:#6b7280\">${esc(f.evidence)}</span><br>\u2192 ${esc(f.fix)}</li>`).join('');\nconst tests = (cro.experiments || []).map((t) => `<li style=\"margin:0 0 8px\"><b>${esc(t.change)}</b>: ${esc(t.hypothesis)} <span style=\"color:#6b7280\">(metric: ${esc(t.primary_metric)})</span></li>`).join('');\nconst pillars = (p.strategy_pillars || []).map((s) => `<li style=\"margin:0 0 8px\"><b>${esc(s.title)}</b>: ${esc(s.why)}<br>${esc(s.what_we_do)}</li>`).join('');\nconst pkgs = (p.packages || []).map((k) => {\n  const rec = k.name === p.recommended_package;\n  return `<td valign=\"top\" style=\"width:33%;padding:14px;border:${rec ? '2px solid #4f46e5' : '1px solid #e5e7eb'};border-radius:10px\">${rec ? '<div style=\"font-size:11px;color:#4f46e5;font-weight:700\">RECOMMENDED</div>' : ''}<div style=\"font-weight:700;font-size:15px\">${esc(k.name)}</div><div style=\"font-size:22px;font-weight:700;margin:4px 0\">$${Number(k.monthly_price_usd || 0).toLocaleString()}<span style=\"font-size:12px;color:#6b7280\">/mo</span></div><div style=\"font-size:12px;color:#6b7280;margin-bottom:8px\">${esc(k.best_for)}</div><ul style=\"padding-left:18px;font-size:13px\">${li(k.deliverables)}</ul></td>`;\n}).join('');\nconst roadmap = (p.first_90_days || []).map((ph) => `<li style=\"margin:0 0 8px\"><b>${esc(ph.phase)}: ${esc(ph.focus)}</b><ul style=\"padding-left:18px\">${li(ph.milestones)}</ul></li>`).join('');\nconst html = shell(p.headline || `Growth proposal for ${x.company}`, `${cfg.agency_name} \u00b7 proposal draft for review`,\n  `<table style=\"border-spacing:8px;margin:8px -8px 16px\"><tr>${score('SEO score', seo.seo_score)}${score('CRO score', cro.cro_score)}${score('Budget / mo', '$' + Number(x.budget).toLocaleString())}</tr></table>`\n  + card('Executive summary', `<p style=\"margin:0\">${esc(p.executive_summary)}</p>`)\n  + card('What we found', `<ul style=\"padding-left:18px;margin:0\">${li(p.diagnosis)}</ul>`)\n  + card('SEO: critical issues', `<ul style=\"padding-left:18px;margin:0\">${issues}</ul><p style=\"margin:10px 0 0\"><b>Quick wins:</b></p><ul style=\"padding-left:18px\">${li(seo.quick_wins)}</ul>`)\n  + card('Conversion review', `<p style=\"margin:0 0 8px\">${esc(cro.value_prop_assessment)}</p><ul style=\"padding-left:18px;margin:0\">${friction}</ul><p style=\"margin:10px 0 0\"><b>First tests:</b></p><ul style=\"padding-left:18px\">${tests}</ul>`)\n  + card('Strategy', `<ul style=\"padding-left:18px;margin:0\">${pillars}</ul>`)\n  + `<table style=\"border-spacing:8px;margin:0 -8px 16px;width:100%\"><tr>${pkgs}</tr></table>`\n  + card('First 90 days', `<ul style=\"padding-left:18px;margin:0\">${roadmap}</ul>`)\n  + card('Why it pays back', `<p style=\"margin:0\">${esc(p.roi_rationale)}</p>`)\n  + card('Next steps', `<ol style=\"padding-left:18px;margin:0\">${li(p.next_steps)}</ol>`)\n  + `<p style=\"font-size:12px;color:#9ca3af\">Generated by Agency OS from a homepage crawl and discovery notes. Review before sending to ${esc(x.contact_email || 'the prospect')}.</p>`);\nreturn { json: { ...x, subject: `[Review] Proposal for ${x.company}: ${p.headline || ''}`.slice(0, 180), html, recommended_package: p.recommended_package, proposal_value_usd: recPkg.monthly_price_usd || '' } };\n"
+      },
+      "id": "5af4f200-f347-4245-959b-7d29aea69eda",
+      "name": "Render Proposal Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.am_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "20d69133-e927-4038-8861-b043c41cce30",
+      "name": "Email Proposal to AM",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3120,
+        400
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const x = $('Render Proposal Email').item.json;\nreturn { json: { created_at: new Date().toISOString(), company: x.company, website: x.website, contact_name: x.contact_name,\n  contact_email: x.contact_email, goal: x.goal, budget: x.budget, seo_score: x.seo?.seo_score ?? '', cro_score: x.cro?.cro_score ?? '',\n  recommended_package: x.recommended_package, proposal_value_usd: x.proposal_value_usd, status: 'Draft sent to AM' } };\n"
+      },
+      "id": "5d8cdb17-7773-4a04-8db5-d7406a8ab9ab",
+      "name": "Proposal Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Proposals"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_name",
+              "displayName": "contact_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contact_email",
+              "displayName": "contact_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goal",
+              "displayName": "goal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "budget",
+              "displayName": "budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "seo_score",
+              "displayName": "seo_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cro_score",
+              "displayName": "cro_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recommended_package",
+              "displayName": "recommended_package",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "proposal_value_usd",
+              "displayName": "proposal_value_usd",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f069e0f2-0d08-40a0-aa4e-c871c2781146",
+      "name": "Log Proposal",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3600,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets (Agency DB)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.slack_sales_channel }}"
+        },
+        "text": "=:page_facing_up: Proposal ready for *{{ $('Proposal Row').item.json.company }}*: SEO {{ $('Proposal Row').item.json.seo_score }}/100 \u00b7 CRO {{ $('Proposal Row').item.json.cro_score }}/100 \u00b7 recommended *{{ $('Proposal Row').item.json.recommended_package }}* (${{ $('Proposal Row').item.json.proposal_value_usd }}/mo). Draft sent to {{ $('Render Proposal Email').item.json.am_email }}.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "mrkdwn": true
+        }
+      },
+      "id": "297af5ec-7bed-4026-8667-295862d7dc26",
+      "name": "Notify Sales",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        3840,
+        400
+      ],
+      "credentials": {
+        "slackApi": {
+          "id": "",
+          "name": "Slack (Agency)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Discovery Form": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Brief": {
+      "main": [
+        [
+          {
+            "node": "Fetch Homepage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Homepage": {
+      "main": [
+        [
+          {
+            "node": "Fetch robots.txt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch robots.txt": {
+      "main": [
+        [
+          {
+            "node": "Fetch sitemap.xml",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch sitemap.xml": {
+      "main": [
+        [
+          {
+            "node": "Technical Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Technical Signals": {
+      "main": [
+        [
+          {
+            "node": "Brain: SEO Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: SEO Audit": {
+      "main": [
+        [
+          {
+            "node": "Prep CRO Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep CRO Review": {
+      "main": [
+        [
+          {
+            "node": "Brain: CRO Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: CRO Review": {
+      "main": [
+        [
+          {
+            "node": "Prep Proposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Proposal": {
+      "main": [
+        [
+          {
+            "node": "Brain: Write Proposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brain: Write Proposal": {
+      "main": [
+        [
+          {
+            "node": "Render Proposal Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render Proposal Email": {
+      "main": [
+        [
+          {
+            "node": "Email Proposal to AM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Proposal to AM": {
+      "main": [
+        [
+          {
+            "node": "Proposal Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Proposal Row": {
+      "main": [
+        [
+          {
+            "node": "Log Proposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Proposal": {
+      "main": [
+        [
+          {
+            "node": "Notify Sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
