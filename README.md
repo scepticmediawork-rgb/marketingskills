@@ -158,6 +158,25 @@ Install via Claude Code's built-in plugin system:
 /plugin install marketing-skills
 ```
 
+#### SEO team (Claude Code subagents)
+
+The plugin also ships an **SEO team**: five Claude Code subagents, each built on one or more SEO skills, plus a `/seo-team` command that runs them in parallel and merges their output into one prioritized plan.
+
+| Subagent | Built on | Covers |
+|----------|----------|--------|
+| `seo-technical-auditor` | seo-audit | Crawlability, indexation, Core Web Vitals, on-page |
+| `seo-keyword-strategist` | content-strategy, competitors | Keyword map, search intent, topic clusters, content briefs |
+| `seo-site-architect` | site-architecture, programmatic-seo | URL structure, internal linking, programmatic page sets |
+| `seo-schema-specialist` | schema | JSON-LD audit and implementation |
+| `seo-ai-search-specialist` | ai-seo | AI Overviews, ChatGPT/Perplexity/Claude citations, llms.txt |
+
+```bash
+/seo-team https://example.com          # full team audit + action plan
+/seo-team why did our blog traffic drop?
+```
+
+You can also call one specialist directly: "use the seo-schema-specialist agent to audit our product pages." The subagents are Claude Code-only; other agents use the underlying skills directly. Not using the plugin? Copy `agents/*.md` into your project's `.claude/agents/` and `commands/seo-team.md` into `.claude/commands/`.
+
 ### Option 3: Clone and Copy
 
 Clone the entire repo and copy the skills folder:

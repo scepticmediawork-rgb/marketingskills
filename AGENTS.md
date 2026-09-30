@@ -20,6 +20,8 @@ marketingskills/
 ├── skills/                # Agent Skills
 │   └── skill-name/
 │       └── SKILL.md       # Required skill file
+├── agents/                # Claude Code subagents (SEO team) — plugin-only, not cross-agent
+├── commands/              # Claude Code slash commands (/seo-team)
 ├── tools/
 │   ├── clis/              # Zero-dependency Node.js CLI tools (51 tools)
 │   ├── composio/          # Composio integration layer (quick start + toolkit mapping)
