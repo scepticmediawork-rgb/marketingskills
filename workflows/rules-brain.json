@@ -1,0 +1,120 @@
+{
+  "name": "Rules Brain (no AI)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Rules Brain (no AI)\nScores an item with **fixed rules you write**, not AI. Costs nothing to run.\n\n**Input:** `task`, `facts`, `ruleset` (the name of a rule pack).\n**Output:** the input plus `score` (0-100), `tier`, `reasons` (why), `draft` (a template filled with the facts), and `scored` (true/false).\n\nMissing facts become **DATA NEEDED** in the draft. It never guesses.\n\n**Before running:** nothing to connect. To change the rules or wording, open **Step 2** and edit the RULE PACKS and TEMPLATES at the top.\n\n**To try it:** click *Test workflow* - the two *(test only)* nodes feed a sample lead into Step 2.\n\nNothing here sends or publishes anything.",
+        "height": 360,
+        "width": 620,
+        "color": 4
+      },
+      "id": "ad92414e-e07f-4474-8703-efc65a69030d",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "873d2ae7-5a97-4e77-a791-cd2d2ddffd47",
+      "name": "Step 1 - Called by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        80
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "35f1c538-c00f-428c-89a7-68559fbdbb24",
+      "name": "Step 1 (test only) - Run by hand",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"task\": \"Score inbound lead\",\n  \"ruleset\": \"lead_scoring\",\n  \"facts\": {\n    \"name\": \"Priya Sharma\",\n    \"email\": \"priya@acmeretail.in\",\n    \"company\": \"Acme Retail\",\n    \"company_size\": \"250\",\n    \"budget\": \"6,000\",\n    \"role\": \"Head of Marketing\",\n    \"timeline\": \"ASAP\",\n    \"source\": \"Referral\",\n    \"message\": \"a paid social retainer\"\n  }\n}",
+        "options": {}
+      },
+      "id": "a43d86f0-ff58-4247-a011-cad3bd53b893",
+      "name": "Step 1 (test only) - Sample lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================================\n//  RULES BRAIN (no AI)  -  edit the RULE PACKS and TEMPLATES below.\n//  You do not need to know JavaScript. Just follow the patterns:\n//    - text goes inside \"double quotes\"\n//    - every line inside a { ... } block ends with a comma\n//    - numbers have no quotes (20, not \"20\")\n//  After editing, click \"Execute step\" to check there are no red errors.\n// =====================================================================\n\n// ---------------------------------------------------------------------\n//  RULE PACKS\n//  A rule pack is a list of checks. The caller picks one by name,\n//  e.g. ruleset: \"lead_scoring\".\n//\n//  Each rule looks like:\n//    { fact: \"budget\", check: \"atLeast\", value: 5000, points: 25,\n//      reason: \"Budget is 5,000 or more\" },\n//\n//    fact    = the name of the field to look at inside \"facts\"\n//    check   = what to test. One of:\n//                \"isPresent\"     - field is filled in\n//                \"isMissing\"     - field is empty or absent\n//                \"equals\"        - field equals value exactly (ignores case)\n//                \"isOneOf\"       - field equals any item in a list\n//                \"containsAny\"   - field contains any word/phrase in a list\n//                \"containsNone\"  - field contains none of the list\n//                \"atLeast\"       - number is >= value\n//                \"atMost\"        - number is <= value\n//                \"between\"       - number is within [low, high]\n//    value   = what to compare against (a number, text, or [a list])\n//    points  = added to the score when the check passes\n//              (use a minus number, e.g. -15, to take points away)\n//    reason  = plain-English sentence shown when the check passes\n//\n//  startScore = points every item starts with (usually 0)\n//  tiers      = score bands, checked top to bottom; first match wins\n//  mustHave (optional) = facts you need before you can judge at all.\n//               If any are missing, the tier becomes the \"needsInfoTier\"\n//               name instead of a score band, so a lead is never written\n//               off just because we do not know something yet.\n//  template   = which TEMPLATE (below) to use for the draft\n//  templateByTier (optional) = a different template per tier\n// ---------------------------------------------------------------------\nconst RULE_PACKS = {\n\n  lead_scoring: {\n    description: \"Scores an inbound lead for fit and urgency.\",\n    startScore: 0,\n    rules: [\n      // --- Fit: company size ---\n      { fact: \"company_size\", check: \"atLeast\", value: 200, points: 20, reason: \"Company has 200+ employees\" },\n      { fact: \"company_size\", check: \"between\", value: [20, 199], points: 12, reason: \"Company has 20-199 employees\" },\n      { fact: \"company_size\", check: \"atMost\", value: 19, points: 4, reason: \"Small company (under 20 employees)\" },\n\n      // --- Fit: budget (monthly, in your currency) ---\n      { fact: \"budget\", check: \"atLeast\", value: 5000, points: 25, reason: \"Budget is 5,000 or more\" },\n      { fact: \"budget\", check: \"between\", value: [1500, 4999], points: 12, reason: \"Budget is 1,500-4,999\" },\n      { fact: \"budget\", check: \"atMost\", value: 1499, points: -10, reason: \"Budget is below 1,500 (below our minimum)\" },\n\n      // --- Authority: job title ---\n      { fact: \"role\", check: \"containsAny\", value: [\"founder\", \"ceo\", \"owner\", \"cmo\", \"vp\", \"head of\", \"director\"], points: 20, reason: \"Contact is a decision-maker\" },\n      { fact: \"role\", check: \"containsAny\", value: [\"manager\", \"lead\"], points: 8, reason: \"Contact is a manager (may need sign-off)\" },\n      { fact: \"role\", check: \"containsAny\", value: [\"intern\", \"student\"], points: -10, reason: \"Contact is unlikely to be a buyer\" },\n\n      // --- Urgency: timeline ---\n      { fact: \"timeline\", check: \"containsAny\", value: [\"asap\", \"right now\", \"this month\", \"this week\", \"immediately\", \"urgent\"], points: 15, reason: \"Wants to start within a month\" },\n      { fact: \"timeline\", check: \"containsAny\", value: [\"next month\", \"this quarter\", \"1-3 months\"], points: 8, reason: \"Wants to start within a quarter\" },\n\n      // --- Source quality ---\n      { fact: \"source\", check: \"isOneOf\", value: [\"referral\", \"demo request\", \"partner\"], points: 10, reason: \"Came from a high-intent source\" },\n\n      // --- Email quality ---\n      { fact: \"email\", check: \"containsAny\", value: [\"@gmail.\", \"@yahoo.\", \"@hotmail.\", \"@outlook.\", \"@icloud.\"], points: -5, reason: \"Uses a personal email address, not a work one\" },\n\n      // --- Did they tell us what they need? ---\n      { fact: \"message\", check: \"isPresent\", points: 5, reason: \"Left a message describing their need\" },\n      { fact: \"message\", check: \"isOneOf\", value: [\"test\", \"testing\", \"asdf\", \"hi\", \"hello\"], points: -20, reason: \"Message looks like a test or junk\" },\n    ],\n    tiers: [\n      { min: 70, name: \"Hot\" },\n      { min: 40, name: \"Warm\" },\n      { min: 0,  name: \"Cold\" },\n    ],\n    mustHave: [\"budget\"],\n    needsInfoTier: \"Needs info\",\n    templateByTier: {\n      \"Hot\": \"lead_reply_hot\",\n      \"Warm\": \"lead_reply_warm\",\n      \"Cold\": \"lead_reply_cold\",\n      \"Needs info\": \"lead_reply_warm\",\n    },\n  },\n\n  client_health: {\n    description: \"Flags retainer clients who may be at risk of leaving.\",\n    startScore: 50,\n    rules: [\n      { fact: \"days_since_last_reply\", check: \"atLeast\", value: 14, points: -25, reason: \"Client has not replied in 14+ days\" },\n      { fact: \"days_since_last_reply\", check: \"atMost\", value: 3, points: 10, reason: \"Client replied in the last 3 days\" },\n      { fact: \"overdue_invoices\", check: \"atLeast\", value: 1, points: -20, reason: \"Client has an overdue invoice\" },\n      { fact: \"deliverables_late\", check: \"atLeast\", value: 2, points: -15, reason: \"We are late on 2+ deliverables\" },\n      { fact: \"nps\", check: \"atLeast\", value: 9, points: 20, reason: \"Client gave a 9-10 satisfaction score\" },\n      { fact: \"nps\", check: \"atMost\", value: 6, points: -20, reason: \"Client gave a 0-6 satisfaction score\" },\n      { fact: \"months_retained\", check: \"atLeast\", value: 12, points: 10, reason: \"Client has stayed 12+ months\" },\n    ],\n    tiers: [\n      { min: 70, name: \"Healthy\" },\n      { min: 40, name: \"Watch\" },\n      { min: 0,  name: \"At risk\" },\n    ],\n    template: \"client_checkin\",\n  },\n\n};\n\n// ---------------------------------------------------------------------\n//  TEMPLATES\n//  Write the draft text. Put a fact name inside double curly braces,\n//  e.g. {{name}}, and it is replaced with that fact.\n//  If a fact is missing, the draft shows DATA NEEDED instead - it never\n//  guesses. You can also use {{score}}, {{tier}} and {{task}}.\n//  Use \\n for a new line.\n// ---------------------------------------------------------------------\nconst TEMPLATES = {\n\n  lead_reply_hot:\n    \"Subject: Next steps for {{company}}\\n\\n\" +\n    \"Hi {{name}},\\n\\n\" +\n    \"Thanks for reaching out about {{message}}. Based on your timeline ({{timeline}}) \" +\n    \"and budget ({{budget}}), we look like a strong fit.\\n\\n\" +\n    \"Could we book a 30-minute call this week? Here is my calendar: {{booking_link}}\\n\\n\" +\n    \"Best,\\n{{sender_name}}\",\n\n  lead_reply_warm:\n    \"Subject: Re: your enquiry\\n\\n\" +\n    \"Hi {{name}},\\n\\n\" +\n    \"Thanks for getting in touch about {{message}}. To see if we are the right fit for \" +\n    \"{{company}}, could you share your rough monthly budget and when you would like to start?\\n\\n\" +\n    \"Best,\\n{{sender_name}}\",\n\n  lead_reply_cold:\n    \"Subject: Thanks for reaching out\\n\\n\" +\n    \"Hi {{name}},\\n\\n\" +\n    \"Thanks for your message. We may not be the best fit right now, but here are some \" +\n    \"free resources that might help: {{resources_link}}\\n\\n\" +\n    \"Best,\\n{{sender_name}}\",\n\n  client_checkin:\n    \"Subject: Quick check-in\\n\\n\" +\n    \"Hi {{name}},\\n\\n\" +\n    \"Just checking in on {{project}}. Status: {{tier}} ({{score}}/100).\\n\\n\" +\n    \"Best,\\n{{sender_name}}\",\n\n};\n\n// Text used for any fact the Brain does not have.\nconst MISSING = \"DATA NEEDED\";\n\n// =====================================================================\n//  ENGINE - you should not need to edit anything below this line.\n// =====================================================================\n\nfunction isEmpty(v) {\n  if (v === undefined || v === null) return true;\n  if (typeof v === \"string\") return v.trim() === \"\";\n  if (Array.isArray(v)) return v.length === 0;\n  return false;\n}\n\n// \"5,000\" -> 5000, \"$1.5k\" -> 1500, \"11-50\" -> 30.5 (middle of a range).\nfunction toNumber(v) {\n  if (typeof v === \"number\") return Number.isFinite(v) ? v : null;\n  if (typeof v !== \"string\") return null;\n  const found = [...v.replace(/,/g, \"\").matchAll(/(\\d+(?:\\.\\d+)?)\\s*([km])?\\b/gi)].map((m) => {\n    let n = parseFloat(m[1]);\n    if (m[2]) n *= m[2].toLowerCase() === \"k\" ? 1000 : 1000000;\n    return n;\n  });\n  if (found.length === 0) return null;\n  if (found.length >= 2 && /\\d\\s*[km]?\\s*(-|to)\\s*\\$?\\d/i.test(v)) return (found[0] + found[1]) / 2;\n  return found[0];\n}\n\nfunction toText(v) {\n  if (Array.isArray(v)) return v.map(toText).join(\", \");\n  if (v && typeof v === \"object\") return JSON.stringify(v);\n  return String(v);\n}\n\nfunction asList(value) {\n  return (Array.isArray(value) ? value : [value]).map((x) => String(x).toLowerCase());\n}\n\n// Returns true / false, or null when the fact cannot be checked.\nfunction runCheck(rule, raw) {\n  if (rule.check === \"isMissing\") return isEmpty(raw);\n  if (rule.check === \"isPresent\") return !isEmpty(raw);\n  if (isEmpty(raw)) return null;\n\n  const text = toText(raw).toLowerCase().trim();\n  const list = asList(rule.value);\n  switch (rule.check) {\n    case \"equals\":       return text === list[0];\n    case \"isOneOf\":      return list.includes(text);\n    case \"containsAny\":  return list.some((w) => text.includes(w));\n    case \"containsNone\": return !list.some((w) => text.includes(w));\n    case \"atLeast\":\n    case \"atMost\":\n    case \"between\": {\n      const n = toNumber(raw);\n      if (n === null) return null;\n      if (rule.check === \"atLeast\") return n >= Number(rule.value);\n      if (rule.check === \"atMost\") return n <= Number(rule.value);\n      return n >= Number(rule.value[0]) && n <= Number(rule.value[1]);\n    }\n    default:\n      throw new Error('Unknown check \"' + rule.check + '\" on fact \"' + rule.fact + '\"');\n  }\n}\n\nfunction fillTemplate(template, values) {\n  return template.replace(/\\{\\{\\s*([\\w.]+)\\s*\\}\\}/g, (_, key) =>\n    isEmpty(values[key]) ? MISSING : toText(values[key])\n  );\n}\n\nfunction think(input) {\n  let facts = input.facts;\n  if (typeof facts === \"string\") {\n    try { facts = JSON.parse(facts); } catch (e) { facts = {}; }\n  }\n  if (!facts || typeof facts !== \"object\") facts = {};\n\n  const packName = String(input.ruleset || \"\").trim();\n  const pack = RULE_PACKS[packName];\n  if (!pack) {\n    return {\n      ...input,\n      scored: false,\n      score: 0,\n      tier: \"UNSCORED\",\n      reasons: ['No rule pack called \"' + packName + '\". Available: ' + Object.keys(RULE_PACKS).join(\", \")],\n      draft: \"\",\n    };\n  }\n\n  let score = Number(pack.startScore) || 0;\n  const reasons = [];\n  if (score) reasons.push(\"Starting score: \" + score);\n  const unchecked = new Set();\n\n  for (const rule of pack.rules) {\n    const raw = facts[rule.fact];\n    const result = runCheck(rule, raw);\n    if (result === null) { unchecked.add(rule.fact); continue; }\n    if (result) {\n      score += rule.points;\n      const sign = rule.points >= 0 ? \"+\" : \"\";\n      const shown = isEmpty(raw) ? \"\" : \" (\" + rule.fact + \": \" + toText(raw) + \")\";\n      reasons.push(sign + rule.points + \": \" + rule.reason + shown);\n    }\n  }\n  for (const f of unchecked) {\n    reasons.push(\"0: Could not check \\\"\" + f + \"\\\" - \" + MISSING);\n  }\n  if (reasons.length === 0) reasons.push(\"No rules matched.\");\n\n  score = Math.max(0, Math.min(100, Math.round(score)));\n  let tier = (pack.tiers.find((t) => score >= t.min) || { name: \"Unrated\" }).name;\n  const missingMust = (pack.mustHave || []).filter((f) => isEmpty(facts[f]));\n  if (missingMust.length > 0) {\n    tier = pack.needsInfoTier || \"Needs info\";\n    reasons.push(\"Tier set to \\\"\" + tier + \"\\\" because these must-have facts are missing: \" + missingMust.join(\", \"));\n  }\n\n  const templateName =\n    input.template || (pack.templateByTier && pack.templateByTier[tier]) || pack.template;\n  const template = TEMPLATES[templateName];\n  const draft = template\n    ? fillTemplate(template, { ...facts, score, tier, task: input.task })\n    : MISSING + ': no template called \"' + templateName + '\"';\n\n  return { ...input, scored: true, score, tier, reasons, draft };\n}\n\nreturn $input.all().map((item, i) => ({ json: think(item.json), pairedItem: i }));\n"
+      },
+      "id": "efdf257c-54ed-43ef-b78d-2447d0d4bc78",
+      "name": "Step 2 - Apply rules and fill template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Step 1 - Called by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Step 2 - Apply rules and fill template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1 (test only) - Run by hand": {
+      "main": [
+        [
+          {
+            "node": "Step 1 (test only) - Sample lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1 (test only) - Sample lead": {
+      "main": [
+        [
+          {
+            "node": "Step 2 - Apply rules and fill template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

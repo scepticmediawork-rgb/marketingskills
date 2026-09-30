@@ -1,0 +1,289 @@
+{
+  "name": "Lead Scoring (Rules Brain)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Lead Scoring (Rules Brain, no AI)\nFinds leads in your Notion database that have **no Score yet**, scores them with the **Rules Brain** workflow, and writes **Score**, **Tier** and **Score Reasons** back to each row.\n\nIt only updates those three columns. It does **not** email or message anyone.\n\n**Set up before running:**\n1. Import and save *Rules Brain (no AI)* first.\n2. **Step 2** - paste your Notion database ID.\n3. **Step 3** and **Step 7** - pick your *Notion API* credential.\n4. **Step 5** - choose *Rules Brain (no AI)* (paste its ID from its URL).\n5. In Notion: share the database with your integration and add columns **Score** (Number), **Tier** (Select), **Score Reasons** (Text).\n6. If your column names differ, edit the list at the top of **Step 4**.",
+        "height": 420,
+        "width": 760,
+        "color": 4
+      },
+      "id": "f50e3ed2-679e-4542-af90-f90cf2eec7b1",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -440
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fe40023d-917f-486e-97e2-1287a2609810",
+      "name": "Step 1 - Run by hand",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "5eca7782-16c9-4bbd-b0a9-e281fb556201",
+      "name": "Step 1 (optional) - Run every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        280
+      ],
+      "notes": "Only runs if you switch the workflow to Active."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "918dac46-a87d-4069-95bf-f842ca52011b",
+              "name": "notionDatabaseId",
+              "value": "PASTE_YOUR_NOTION_DATABASE_ID_HERE",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4fd555fd-040b-425f-af1d-c61b43e14e2a",
+      "name": "Step 2 - Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.notion.com/v1/databases/{{ $json.notionDatabaseId }}/query",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"page_size\": 50,\n  \"filter\": {\n    \"property\": \"Score\",\n    \"number\": {\n      \"is_empty\": true\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "db5dcd7d-6982-4682-8399-adc6aafaa072",
+      "name": "Step 3 - Get unscored leads from Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================================\n//  Turn each Notion row into a lead the Rules Brain can score.\n//\n//  EDIT THIS LIST if your Notion columns have different names.\n//  Left side  = the exact column name in your Notion database.\n//  Right side = the fact name the \"lead_scoring\" rule pack looks for.\n// =====================================================================\nconst COLUMN_TO_FACT = {\n  \"Name\": \"name\",\n  \"Email\": \"email\",\n  \"Company\": \"company\",\n  \"Company Size\": \"company_size\",\n  \"Budget\": \"budget\",\n  \"Role\": \"role\",\n  \"Timeline\": \"timeline\",\n  \"Source\": \"source\",\n  \"Message\": \"message\",\n};\n\n// Facts that are the same for every lead (used in the draft reply).\n// Leave a value as \"\" and the draft will show DATA NEEDED there.\nconst EXTRA_FACTS = {\n  sender_name: \"\",\n  booking_link: \"\",\n  resources_link: \"\",\n};\n\n// Which rule pack to use (must match a name in the Rules Brain).\nconst RULESET = \"lead_scoring\";\n\n// =====================================================================\n//  You should not need to edit below this line.\n// =====================================================================\n\n// Reads the plain value out of any common Notion column type.\n// Returns \"\" when the cell is empty, so the Brain marks it DATA NEEDED.\nfunction readCell(prop) {\n  if (!prop) return \"\";\n  switch (prop.type) {\n    case \"title\":\n    case \"rich_text\":\n      return (prop[prop.type] || []).map((t) => t.plain_text).join(\"\").trim();\n    case \"number\":       return prop.number === null ? \"\" : prop.number;\n    case \"select\":\n    case \"status\":       return prop[prop.type] ? prop[prop.type].name : \"\";\n    case \"multi_select\": return (prop.multi_select || []).map((o) => o.name);\n    case \"email\":        return prop.email || \"\";\n    case \"phone_number\": return prop.phone_number || \"\";\n    case \"url\":          return prop.url || \"\";\n    case \"checkbox\":     return prop.checkbox;\n    case \"date\":         return prop.date ? prop.date.start : \"\";\n    case \"formula\": {\n      const f = prop.formula || {};\n      return f[f.type] === null || f[f.type] === undefined ? \"\" : f[f.type];\n    }\n    default:             return \"\";\n  }\n}\n\nconst rows = $input.first().json.results || [];\nreturn rows.map((page) => {\n  const facts = { ...EXTRA_FACTS };\n  for (const [column, fact] of Object.entries(COLUMN_TO_FACT)) {\n    facts[fact] = readCell(page.properties[column]);\n  }\n  return {\n    json: {\n      pageId: page.id,\n      pageUrl: page.url,\n      task: \"Score inbound lead\",\n      ruleset: RULESET,\n      facts,\n    },\n  };\n});\n"
+      },
+      "id": "4b2e3611-aa78-47e7-817f-59b2273dc73b",
+      "name": "Step 4 - Turn Notion rows into facts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "",
+        "mode": "once",
+        "options": {}
+      },
+      "id": "43b5f4bc-d002-4ffb-86ac-402394b4d86f",
+      "name": "Step 5 - Score with Rules Brain",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4889793b-22a0-4e67-bb56-5d567ca0ac07",
+              "leftValue": "={{ $json.scored }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "8fb70f52-dcd8-42d4-bc1e-32e5e52c994b",
+      "name": "Step 6 - Was it scored?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.notion.com/v1/pages/{{ $json.pageId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "notionApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: {\n  \"Score\": { number: $json.score },\n  \"Tier\": { select: { name: $json.tier } },\n  \"Score Reasons\": { rich_text: [ { text: { content: $json.reasons.join(\"\\n\").slice(0, 2000) } } ] }\n} }) }}",
+        "options": {}
+      },
+      "id": "5fd91246-f000-4a07-adf4-83bd01921b11",
+      "name": "Step 7 - Write score back to Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1340,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Step 1 - Run by hand": {
+      "main": [
+        [
+          {
+            "node": "Step 2 - Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1 (optional) - Run every hour": {
+      "main": [
+        [
+          {
+            "node": "Step 2 - Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 2 - Settings": {
+      "main": [
+        [
+          {
+            "node": "Step 3 - Get unscored leads from Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 3 - Get unscored leads from Notion": {
+      "main": [
+        [
+          {
+            "node": "Step 4 - Turn Notion rows into facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 4 - Turn Notion rows into facts": {
+      "main": [
+        [
+          {
+            "node": "Step 5 - Score with Rules Brain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 5 - Score with Rules Brain": {
+      "main": [
+        [
+          {
+            "node": "Step 6 - Was it scored?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 6 - Was it scored?": {
+      "main": [
+        [
+          {
+            "node": "Step 7 - Write score back to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveManualExecutions": true
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
