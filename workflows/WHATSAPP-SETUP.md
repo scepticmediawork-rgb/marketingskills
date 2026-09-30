@@ -21,9 +21,20 @@ Every reply is text **you wrote**. The bot doesn't use AI, so it never makes up 
 
 ## What it costs
 
-- **Meta WhatsApp Cloud API:** replies within 24 hours of a customer's message are free under Meta's current pricing. This bot only ever replies, and never starts a conversation. Meta charges for business-started "template" messages, which this bot does not send. Meta changes pricing from time to time, so check [Meta's WhatsApp pricing page](https://developers.facebook.com/docs/whatsapp/pricing) once.
-- **Cloudflare Tunnel:** free.
-- **n8n:** your own install, so free.
+**n8n** (your own install) and the **Cloudflare Tunnel** are free. The only possible cost is Meta's WhatsApp charges.
+
+**Meta's WhatsApp pricing for India changes on 1 October 2026:**
+
+| | Until 30 Sep 2026 | From 1 Oct 2026 (India) |
+|---|---|---|
+| Bot replies within 24 hours of a customer's message ("service messages") | Free | First **1,000 per month per phone number** free, then **₹0.115 + GST** (about ₹0.14) each |
+| Marketing broadcasts (templates) | Paid | Paid. This bot never sends these. |
+
+The bot sends **one reply per message it receives**. So it's free up to 1,000 replies a month, and roughly **₹136 per extra 1,000 replies** after that. For example, 3,000 replies in a month is about ₹270.
+
+> ⚠️ **Add a payment method in Meta Business Settings.** Meta has said it will stop delivering service messages for businesses with no payment method on file once they become chargeable, even inside the free 1,000. Meta's test number is enough for trying the bot out.
+
+Meta changes these rates from time to time. Check [Meta's pricing page](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing) before relying on the numbers above.
 
 It uses Meta's **official** API. It does not use "WhatsApp Web" automation tricks, which break WhatsApp's rules and can get your number banned.
 
