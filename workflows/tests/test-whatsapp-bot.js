@@ -7,7 +7,13 @@ const assert = require("assert");
 
 const wf = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "whatsapp-auto-reply.json"), "utf8"));
 const codeOf = (prefix) => wf.nodes.find((n) => n.name.startsWith(prefix)).parameters.jsCode;
-const run = (code, items) => new Function("$input", code)({ all: () => items, first: () => items[0] });
+// Pretend to be n8n. `memory` stands in for n8n's saved workflow data.
+let memory = {};
+const run = (code, items) =>
+  new Function("$input", "$getWorkflowStaticData", code)(
+    { all: () => items, first: () => items[0] },
+    () => memory
+  );
 
 // Build a payload shaped like the ones Meta sends.
 function payload(message, name = "Priya Sharma") {
@@ -36,6 +42,8 @@ const cases = [
   ["Wants a person", text("I want to talk to someone"), "human"],
   ["Sends a photo", { type: "image", image: { id: "img1" } }, "notText"],
   ["Types gibberish", text("qwerty zzz"), "notUnderstood"],
+  ["Says thanks (no reply, saves a free message)", text("Thank you!"), "noReply"],
+  ["Sends only an emoji (no reply)", text("👍"), "noReply"],
 ];
 
 for (const [label, message, expected] of cases) {
@@ -43,9 +51,11 @@ for (const [label, message, expected] of cases) {
   assert.strictEqual(read.length, 1, label + ": message should be read");
   const [r] = run(codeOf("Step 3"), read).map((i) => i.json);
   console.log("=".repeat(70));
-  console.log(`${label}  ->  topic: ${r.topic}   wants a person: ${r.wantsHuman}   sent as: ${r.whatsappBody.type}`);
-  console.log(r.replyText.replace(/^/gm, "  | "));
+  console.log(`${label}  ->  topic: ${r.topic}   wants a person: ${r.wantsHuman}   sent as: ${r.send ? r.whatsappBody.type : "nothing"}`);
+  console.log(r.send ? r.replyText.replace(/^/gm, "  | ") : "  (no reply sent)");
   assert.strictEqual(r.topic, expected, label);
+  assert.strictEqual(r.phoneNumberId, "123456789");
+  if (!r.send) { assert.strictEqual(r.whatsappBody, null); continue; }
   assert.strictEqual(r.whatsappBody.to, "919811111111");
   assert.strictEqual(r.phoneNumberId, "123456789");
   if (r.whatsappBody.type === "interactive") {
@@ -60,6 +70,27 @@ console.log("=".repeat(70));
 // Delivery/read receipts must NOT trigger a reply (otherwise the bot loops).
 assert.strictEqual(run(codeOf("Step 2"), [{ json: payload(null) }]).length, 0, "status updates are ignored");
 console.log("Status updates ignored: OK");
+
+// Free-limit: the counter only counts replies actually sent.
+const sentSoFar = cases.filter((c) => c[2] !== "noReply").length;
+assert.strictEqual(memory.repliesSent, sentSoFar, "counter counts sent replies only");
+console.log(`Counter after the samples: ${memory.repliesSent} replies (the 'no reply' ones not counted): OK`);
+
+// At the limit, the bot goes quiet and flags the chat for a person.
+memory.repliesSent = 900;
+const [capped] = run(codeOf("Step 3"), run(codeOf("Step 2"), [{ json: payload(text("price?")) }])).map((i) => i.json);
+assert.strictEqual(capped.send, false, "no reply once the free limit is reached");
+assert.strictEqual(capped.wantsHuman, true, "capped chats are handed to a person");
+assert.strictEqual(memory.repliesSent, 900, "counter does not grow when nothing is sent");
+console.log("At 900 replies this month the bot stops sending and flags the chat for you: OK");
+
+// New month resets the counter.
+memory.month = "2000-01";
+const [nextMonth] = run(codeOf("Step 3"), [{ json: { from: "1", text: "hi", messageType: "text" } }]).map((i) => i.json);
+assert.strictEqual(nextMonth.send, true);
+assert.strictEqual(memory.repliesSent, 1);
+console.log("Counter resets each month: OK");
+memory = {};
 
 // Every menu option must have a matching reply.
 const [menuCheck] = run(codeOf("Step 3"), [{ json: { from: "1", text: "hi", messageType: "text" } }]).map((i) => i.json);

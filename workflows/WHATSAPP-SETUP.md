@@ -36,6 +36,31 @@ The bot sends **one reply per message it receives**. So it's free up to 1,000 re
 
 Meta changes these rates from time to time. Check [Meta's pricing page](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing) before relying on the numbers above.
 
+## Keeping it 100% free
+
+The workflow has two built-in savers:
+
+1. **Monthly limit.** After **900 replies** in a calendar month, the bot stops replying automatically. That's safely under WhatsApp's 1,000 free. Anyone who messages after that is saved to Notion (if you set it up) so you can answer them yourself. To change the limit, edit `FREE_REPLIES_PER_MONTH` at the top of Step 3. The count resets on the 1st of each month.
+2. **No reply to "ok", "thanks" or emoji-only messages.** These don't need an answer, so they don't use up the free allowance. You can edit the list in `NO_REPLY_WORDS`.
+
+Things to know:
+
+- Any reply sent through the API counts toward the 1,000, including ones your team types in Meta's inbox. Replies typed in the **WhatsApp Business app** are free. Your team can only do that if your number runs in both places at once ("coexistence"), and Meta decides whether that's available when you connect the number.
+- n8n only keeps the counter while the workflow is **Active**. Clicking *Test workflow* starts from zero, and re-importing the workflow resets it. The 100-reply margin covers small slips like these.
+
+### The zero-setup, always-free alternative
+
+If you'd rather avoid Meta developer setup and billing entirely, the free **WhatsApp Business app** on your phone has built-in automations:
+
+- **Greeting message:** sent automatically to new chats, or chats quiet for 14 days. Put your welcome, website and services here.
+- **Away message:** sent outside your working hours.
+- **Quick replies:** type `/services`, `/pricing` or `/website` to paste a saved answer in one tap.
+- **Catalog:** list each service with a description, price and link, so customers can browse inside WhatsApp.
+
+It costs nothing, has no limits, and your number stays in the normal app. It can't do tap-to-open menus, understand typed keywords, or save leads to Notion. That's what this n8n workflow adds.
+
+**Rule of thumb:** under about 30 new chats a day, the Business app alone is enough. Above that, use this workflow with the 900 limit.
+
 It uses Meta's **official** API. It does not use "WhatsApp Web" automation tricks, which break WhatsApp's rules and can get your number banned.
 
 ---
@@ -76,12 +101,12 @@ Meta has to deliver messages to your n8n, and it can't reach `localhost`. A free
 1. In n8n, create a new workflow, then **⋯ → Import from File…** → `whatsapp-auto-reply.json`.
 2. **Step 0b - Is the verify token right?** Change `CHANGE_ME_verify_token` to any password you make up, for example `myagency-2026-xyz`. You'll type the same value into Meta in Step D.
 3. **Step 3 - Choose the reply.** Replace every `FILL_IN` with your agency name, website, page links, services, prices and booking link. See "Editing the replies" below.
-4. **Step 4 - Send reply on WhatsApp.** Under **Credential for Header Auth**, choose **Create new**:
+4. **Step 5 - Send reply on WhatsApp.** Under **Credential for Header Auth**, choose **Create new**:
    - **Name:** `Authorization`
    - **Value:** `Bearer YOUR_TOKEN`. That's the word Bearer, a space, then your token from Step B.
 5. **Optional: save "talk to a person" leads to Notion.**
    - In **Step 3**, paste your Notion database ID into `notionLeadsDatabaseId`.
-   - In **Step 6**, pick your *Notion API* credential.
+   - In **Step 7**, pick your *Notion API* credential.
    - The database needs **Name** (Title), **Phone** (Phone number), **Source** (Select) and **Message** (Text) columns. It can be your lead-scoring database, as long as you add a **Phone** column. The lead-scoring workflow will then pick these leads up. They'll usually show **Needs info** because WhatsApp doesn't give you a budget.
    - If you leave the ID blank, this step is skipped. If Notion fails, the customer still gets their reply.
 6. Click **Save**, then switch the workflow to **Active** (top right).
@@ -127,10 +152,10 @@ After editing, run the test with `node workflows/tests/test-whatsapp-bot.js`. Yo
 | Problem | Likely cause |
 |---------|--------------|
 | Meta says "The callback URL or verify token couldn't be validated" | The workflow isn't **Active**, the tunnel window is closed, the URL is the *Test* URL instead of the *Production* URL, or the token doesn't match Step 0b exactly. |
-| Executions appear but no reply arrives | Open Step 4's error. `401` means the token is wrong or expired, or is missing the `Bearer ` prefix. `131030` means your number isn't in the test "To" list. `131047` means more than 24 hours have passed since their last message. |
+| Executions appear but no reply arrives | Open Step 5's error. If Step 5 didn't run at all, check Step 3's output: `send` is false for "ok/thanks" messages and once the monthly limit is reached. `401` means the token is wrong or expired, or is missing the `Bearer ` prefix. `131030` means your number isn't in the test "To" list. `131047` means more than 24 hours have passed since their last message. |
 | Nothing appears in Executions | You didn't subscribe to the **messages** webhook field, `WEBHOOK_URL` isn't set, or the tunnel address changed. |
 | Replies stopped after a restart | The quick tunnel's address changed. Update `WEBHOOK_URL` and the Meta Callback URL, or set up a named tunnel. |
-| Error mentioning Graph API version | Meta retires old versions. Change `v23.0` in Step 4's URL to the version shown in Meta's API Setup page. |
+| Error mentioning Graph API version | Meta retires old versions. Change `v23.0` in Step 5's URL to the version shown in Meta's API Setup page. |
 
 ## Security notes
 

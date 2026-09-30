@@ -3,12 +3,12 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## WhatsApp Auto-Reply (no AI)\nWhen someone messages your WhatsApp Business number, this replies **straight away**. The reply has a tap-to-open menu with your services, pricing, work, website and page links, and a booking link.\n\nReplies are **fixed text you write** in Step 3, with no AI. If someone asks for a person or sends a photo or voice note, they're told a team member will reply. You can also save them to Notion.\n\n**Set up before running (details in WHATSAPP-SETUP.md):**\n1. Meta developer app with WhatsApp added (free).\n2. A public HTTPS address for your n8n (free Cloudflare Tunnel).\n3. **Step 0b** - change `CHANGE_ME_verify_token`.\n4. **Step 3** - replace every FILL_IN with your details.\n5. **Step 4** - pick a *Header Auth* credential: Name `Authorization`, Value `Bearer YOUR_WHATSAPP_TOKEN`.\n6. **Step 6** (optional) - pick your *Notion API* credential.\n7. Switch the workflow **Active**.\n\n⚠️ This workflow **sends messages automatically** - that is its job.",
-        "height": 520,
+        "content": "## WhatsApp Auto-Reply (no AI)\nWhen someone messages your WhatsApp Business number, this replies **straight away**. The reply has a tap-to-open menu with your services, pricing, work, website and page links, and a booking link.\n\nReplies are **fixed text you write** in Step 3, with no AI. If someone asks for a person or sends a photo or voice note, they're told a team member will reply. You can also save them to Notion.\n\n**Set up before running (details in WHATSAPP-SETUP.md):**\n1. Meta developer app with WhatsApp added (free).\n2. A public HTTPS address for your n8n (free Cloudflare Tunnel).\n3. **Step 0b** - change `CHANGE_ME_verify_token`.\n4. **Step 3** - replace every FILL_IN with your details.\n5. **Step 5** - pick a *Header Auth* credential: Name `Authorization`, Value `Bearer YOUR_WHATSAPP_TOKEN`.\n6. **Step 7** (optional) - pick your *Notion API* credential.\n7. Switch the workflow **Active**.\n\n**Stays free:** stops auto-replying after 900 replies in a month (WhatsApp's free allowance is 1,000) and skips replies to \"ok\", \"thanks\" and emoji. Change the limit in Step 3.\n\n⚠️ This workflow **sends messages automatically** - that is its job.",
+        "height": 580,
         "width": 760,
         "color": 4
       },
-      "id": "90e37f0c-9e86-4276-86d7-b77ada4688d3",
+      "id": "565fb3cd-28f3-4c5d-b15c-32dff183c967",
       "name": "About this workflow",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -20,11 +20,11 @@
     {
       "parameters": {
         "httpMethod": "GET",
-        "path": "whatsapp-08c8662e79e5",
+        "path": "whatsapp-88a3ce581c3f",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "9923712f-aea3-49a7-8a9c-606f98689eb3",
+      "id": "40db3a5c-e965-44cf-8f00-5747c5815764",
       "name": "Step 0a - Meta checks the webhook (one time)",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -32,7 +32,7 @@
         0,
         -80
       ],
-      "webhookId": "15af2534-47b8-41b7-9dff-7a9791a8d72f"
+      "webhookId": "80f8d427-7284-4bde-9208-0bbfef0800a2"
     },
     {
       "parameters": {
@@ -45,7 +45,7 @@
           },
           "conditions": [
             {
-              "id": "b23f2042-2fa9-4e03-8ed4-ff14fac5131f",
+              "id": "40061e67-dcd1-4f72-bd0b-47570da69abd",
               "leftValue": "={{ $json.query['hub.verify_token'] }}",
               "rightValue": "CHANGE_ME_verify_token",
               "operator": {
@@ -59,7 +59,7 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "8dba6c21-8700-49c9-93c0-cdce0e4edb5a",
+      "id": "f254b266-1514-4e38-8ab9-f7ffcab909cb",
       "name": "Step 0b - Is the verify token right?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -74,7 +74,7 @@
         "responseBody": "={{ $json.query['hub.challenge'] }}",
         "options": {}
       },
-      "id": "83e1696a-c80e-486d-bc38-6056eb640ef1",
+      "id": "568c64e2-4bd5-4f02-99ac-dfe61e9ecbc1",
       "name": "Step 0c - Confirm to Meta",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -91,7 +91,7 @@
           "responseCode": 403
         }
       },
-      "id": "a340db41-1e92-4f4a-95c5-cdd331b50982",
+      "id": "6917809b-d57e-44d5-94c5-ee1cc4eae1c1",
       "name": "Step 0c - Reject (wrong token)",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
@@ -103,11 +103,11 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "whatsapp-08c8662e79e5",
+        "path": "whatsapp-88a3ce581c3f",
         "responseMode": "onReceived",
         "options": {}
       },
-      "id": "4eef0c44-cab9-4a9d-b8c5-bfca1a543091",
+      "id": "2ba67ff7-165e-4956-ae6a-cb13a1d10e8a",
       "name": "Step 1 - New WhatsApp message",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -115,13 +115,13 @@
         0,
         200
       ],
-      "webhookId": "23fef8d2-2112-401c-b36f-25609ba9faf1"
+      "webhookId": "8baa258b-6b9f-42de-9dbc-bf74e7d6583c"
     },
     {
       "parameters": {
         "jsCode": "// Reads the message WhatsApp sent us and keeps only what we need.\n// WhatsApp also sends \"delivered\" / \"read\" updates - those are ignored.\n// You should not need to edit this node.\n\nconst out = [];\nfor (const item of $input.all()) {\n  const body = item.json.body || item.json;\n  for (const entry of body.entry || []) {\n    for (const change of entry.changes || []) {\n      const value = change.value || {};\n      const contact = (value.contacts || [])[0] || {};\n      for (const msg of value.messages || []) {\n        let text = \"\";\n        let choiceId = \"\";\n        if (msg.type === \"text\") text = msg.text.body;\n        if (msg.type === \"button\") text = msg.button.text;\n        if (msg.type === \"interactive\") {\n          const reply = msg.interactive.list_reply || msg.interactive.button_reply || {};\n          choiceId = reply.id || \"\";\n          text = reply.title || \"\";\n        }\n        out.push({\n          json: {\n            phoneNumberId: (value.metadata || {}).phone_number_id,\n            from: msg.from,\n            name: (contact.profile || {}).name || \"\",\n            messageId: msg.id,\n            messageType: msg.type,\n            text: (text || \"\").trim(),\n            choiceId,\n          },\n        });\n      }\n    }\n  }\n}\nreturn out;\n"
       },
-      "id": "8676a0ca-7891-442e-8737-54a97c56e199",
+      "id": "1b9b7ea2-3bed-4b8b-9cb3-00eddefe1b58",
       "name": "Step 2 - Read the message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -132,35 +132,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// =====================================================================\n//  WHATSAPP AUTO-REPLY  -  edit YOUR AGENCY and the REPLIES below.\n//  No JavaScript knowledge needed. Keep the \"double quotes\" and the\n//  commas at the end of each line. Use \\n for a new line.\n//  WhatsApp formatting: *bold*  _italic_\n//  Everything marked FILL_IN is a placeholder - replace it.\n// =====================================================================\n\n// ---------------------------------------------------------------------\n//  YOUR AGENCY\n// ---------------------------------------------------------------------\nconst AGENCY = {\n  name: \"FILL_IN Agency Name\",\n  website: \"https://FILL_IN-your-website.com\",\n  hours: \"Mon-Sat, 10am-7pm IST\",\n  // Notion database for people who ask to talk to a person.\n  // Leave \"\" to switch this off. (Can be the same database as lead scoring.)\n  notionLeadsDatabaseId: \"\",\n};\n\n// ---------------------------------------------------------------------\n//  MENU  -  the options people can tap. Max 10 options.\n//  id     = internal name (lowercase, no spaces) - must match a REPLY below\n//  title  = what they see (max 24 characters)\n//  detail = small grey text under the title (max 72 characters)\n// ---------------------------------------------------------------------\nconst MENU = [\n  { id: \"services\",  title: \"Our services\",       detail: \"What we do for brands\" },\n  { id: \"pricing\",   title: \"Pricing\",            detail: \"Packages and starting prices\" },\n  { id: \"work\",      title: \"Our work\",           detail: \"Case studies and portfolio\" },\n  { id: \"website\",   title: \"Website & pages\",    detail: \"Links to our site and socials\" },\n  { id: \"book\",      title: \"Book a call\",        detail: \"Pick a time that suits you\" },\n  { id: \"human\",     title: \"Talk to a person\",   detail: \"A team member will reply\" },\n];\n\n// ---------------------------------------------------------------------\n//  REPLIES  -  what the bot says for each menu option.\n//  words = if someone TYPES any of these, they get this reply\n//          (lowercase; matches whole words in their message).\n//  ORDER MATTERS: if a message matches several topics, the one HIGHER\n//  in this list wins. \"hi, how much for SEO?\" -> pricing, not services.\n// ---------------------------------------------------------------------\nconst REPLIES = {\n\n  pricing: {\n    words: [\"price\", \"prices\", \"pricing\", \"cost\", \"rate\", \"charges\", \"package\", \"packages\", \"budget\", \"how much\", \"fees\"],\n    text:\n      \"*Pricing*\\n\\n\" +\n      \"• FILL_IN Starter - from ₹FILL_IN/month\\n\" +\n      \"• FILL_IN Growth - from ₹FILL_IN/month\\n\" +\n      \"• Custom projects - quoted after a free call\\n\\n\" +\n      \"Full details: \" + AGENCY.website + \"/pricing\",\n  },\n\n  book: {\n    words: [\"book\", \"call\", \"meeting\", \"appointment\", \"demo\", \"consultation\", \"schedule\"],\n    text:\n      \"*Book a free call* 📅\\n\\n\" +\n      \"Pick a time here: https://FILL_IN-booking-link\\n\\n\" +\n      \"Our hours: \" + AGENCY.hours,\n  },\n\n  human: {\n    words: [\"human\", \"person\", \"someone\", \"agent\", \"talk to\", \"speak to\", \"call me\", \"urgent\"],\n    wantsHuman: true,\n    text:\n      \"Thanks {{name}}! 🙌 A member of our team will reply here soon.\\n\\n\" +\n      \"Our hours: \" + AGENCY.hours + \".\\n\" +\n      \"Tell us a little about your business and what you need, and we'll come prepared.\",\n  },\n\n  work: {\n    words: [\"portfolio\", \"work\", \"case study\", \"case studies\", \"clients\", \"results\", \"examples\"],\n    text:\n      \"*Our work*\\n\\n\" +\n      \"Case studies: \" + AGENCY.website + \"/work\\n\" +\n      \"Instagram: https://instagram.com/FILL_IN\\n\" +\n      \"Behance: https://behance.net/FILL_IN\",\n  },\n\n  website: {\n    words: [\"website\", \"site\", \"link\", \"instagram\", \"linkedin\", \"facebook\", \"pages\", \"socials\"],\n    text:\n      \"*Find us online*\\n\\n\" +\n      \"🌐 Website: \" + AGENCY.website + \"\\n\" +\n      \"📸 Instagram: https://instagram.com/FILL_IN\\n\" +\n      \"💼 LinkedIn: https://linkedin.com/company/FILL_IN\\n\" +\n      \"📘 Facebook: https://facebook.com/FILL_IN\",\n  },\n\n  services: {\n    words: [\"service\", \"services\", \"what do you do\", \"offer\", \"seo\", \"ads\", \"social\", \"website design\"],\n    text:\n      \"*Our services*\\n\\n\" +\n      \"• *FILL_IN Service 1* - one line about it\\n\" +\n      \"• *FILL_IN Service 2* - one line about it\\n\" +\n      \"• *FILL_IN Service 3* - one line about it\\n\" +\n      \"• *FILL_IN Service 4* - one line about it\\n\\n\" +\n      \"Details: \" + AGENCY.website + \"/services\",\n  },\n\n  welcome: {\n    words: [\"hi\", \"hello\", \"hey\", \"hii\", \"namaste\", \"menu\", \"start\", \"options\"],\n    text:\n      \"Hi {{name}}! 👋 Welcome to *\" + AGENCY.name + \"*.\\n\\n\" +\n      \"We help brands grow with FILL_IN one-line pitch.\\n\\n\" +\n      \"Tap *See options* below to explore, or just type what you need.\",\n  },\n\n  notUnderstood: {\n    text:\n      \"Sorry, I didn't catch that. 🙏\\n\\n\" +\n      \"Tap *See options* below, or type *person* to talk to our team.\",\n  },\n\n  notText: {\n    wantsHuman: true,\n    text:\n      \"Thanks for sending that! I can only read text messages, so a team member \" +\n      \"will take a look and reply here.\\n\\nOur hours: \" + AGENCY.hours,\n  },\n\n};\n\n// Label on the button that opens the menu (max 20 characters).\nconst MENU_BUTTON = \"See options\";\n\n// =====================================================================\n//  ENGINE - you should not need to edit below this line.\n// =====================================================================\n\nfunction pickTopic(msg) {\n  if (msg.choiceId && REPLIES[msg.choiceId]) return msg.choiceId;\n  if (!msg.text) return msg.messageType === \"text\" ? \"welcome\" : \"notText\";\n  const t = \" \" + msg.text.toLowerCase().replace(/[^\\p{L}\\p{N}\\s]/gu, \" \") + \" \";\n  // Topics are checked top to bottom, so the order of REPLIES matters.\n  for (const key of Object.keys(REPLIES)) {\n    const words = REPLIES[key].words || [];\n    if (words.some((w) => t.includes(\" \" + w.toLowerCase() + \" \") || (w.includes(\" \") && t.includes(w.toLowerCase())))) {\n      return key;\n    }\n  }\n  return \"notUnderstood\";\n}\n\nfunction buildBody(to, text) {\n  if (text.length <= 1024) {\n    return {\n      messaging_product: \"whatsapp\",\n      recipient_type: \"individual\",\n      to,\n      type: \"interactive\",\n      interactive: {\n        type: \"list\",\n        body: { text },\n        footer: { text: AGENCY.name.slice(0, 60) },\n        action: {\n          button: MENU_BUTTON.slice(0, 20),\n          sections: [{\n            title: \"Menu\",\n            rows: MENU.slice(0, 10).map((m) => ({\n              id: m.id, title: m.title.slice(0, 24), description: (m.detail || \"\").slice(0, 72),\n            })),\n          }],\n        },\n      },\n    };\n  }\n  // Too long for a menu message - send as plain text instead.\n  return {\n    messaging_product: \"whatsapp\",\n    recipient_type: \"individual\",\n    to,\n    type: \"text\",\n    text: { preview_url: true, body: text.slice(0, 4096) },\n  };\n}\n\nreturn $input.all().map((item) => {\n  const msg = item.json;\n  const topic = pickTopic(msg);\n  const reply = REPLIES[topic];\n  const firstName = (msg.name || \"\").split(\" \")[0];\n  const text = reply.text.replace(/\\{\\{name\\}\\}/g, firstName || \"there\");\n  return {\n    json: {\n      ...msg,\n      topic,\n      wantsHuman: Boolean(reply.wantsHuman),\n      notionLeadsDatabaseId: AGENCY.notionLeadsDatabaseId,\n      saveLead: Boolean(reply.wantsHuman) && AGENCY.notionLeadsDatabaseId.trim() !== \"\",\n      replyText: text,\n      whatsappBody: buildBody(msg.from, text),\n    },\n  };\n});\n"
+        "jsCode": "// =====================================================================\n//  WHATSAPP AUTO-REPLY  -  edit YOUR AGENCY and the REPLIES below.\n//  No JavaScript knowledge needed. Keep the \"double quotes\" and the\n//  commas at the end of each line. Use \\n for a new line.\n//  WhatsApp formatting: *bold*  _italic_\n//  Everything marked FILL_IN is a placeholder - replace it.\n// =====================================================================\n\n// ---------------------------------------------------------------------\n//  YOUR AGENCY\n// ---------------------------------------------------------------------\nconst AGENCY = {\n  name: \"FILL_IN Agency Name\",\n  website: \"https://FILL_IN-your-website.com\",\n  hours: \"Mon-Sat, 10am-7pm IST\",\n  // Notion database for people who ask to talk to a person.\n  // Leave \"\" to switch this off. (Can be the same database as lead scoring.)\n  notionLeadsDatabaseId: \"\",\n};\n\n// ---------------------------------------------------------------------\n//  MENU  -  the options people can tap. Max 10 options.\n//  id     = internal name (lowercase, no spaces) - must match a REPLY below\n//  title  = what they see (max 24 characters)\n//  detail = small grey text under the title (max 72 characters)\n// ---------------------------------------------------------------------\nconst MENU = [\n  { id: \"services\",  title: \"Our services\",       detail: \"What we do for brands\" },\n  { id: \"pricing\",   title: \"Pricing\",            detail: \"Packages and starting prices\" },\n  { id: \"work\",      title: \"Our work\",           detail: \"Case studies and portfolio\" },\n  { id: \"website\",   title: \"Website & pages\",    detail: \"Links to our site and socials\" },\n  { id: \"book\",      title: \"Book a call\",        detail: \"Pick a time that suits you\" },\n  { id: \"human\",     title: \"Talk to a person\",   detail: \"A team member will reply\" },\n];\n\n// ---------------------------------------------------------------------\n//  REPLIES  -  what the bot says for each menu option.\n//  words = if someone TYPES any of these, they get this reply\n//          (lowercase; matches whole words in their message).\n//  ORDER MATTERS: if a message matches several topics, the one HIGHER\n//  in this list wins. \"hi, how much for SEO?\" -> pricing, not services.\n// ---------------------------------------------------------------------\nconst REPLIES = {\n\n  pricing: {\n    words: [\"price\", \"prices\", \"pricing\", \"cost\", \"rate\", \"charges\", \"package\", \"packages\", \"budget\", \"how much\", \"fees\"],\n    text:\n      \"*Pricing*\\n\\n\" +\n      \"• FILL_IN Starter - from ₹FILL_IN/month\\n\" +\n      \"• FILL_IN Growth - from ₹FILL_IN/month\\n\" +\n      \"• Custom projects - quoted after a free call\\n\\n\" +\n      \"Full details: \" + AGENCY.website + \"/pricing\",\n  },\n\n  book: {\n    words: [\"book\", \"call\", \"meeting\", \"appointment\", \"demo\", \"consultation\", \"schedule\"],\n    text:\n      \"*Book a free call* 📅\\n\\n\" +\n      \"Pick a time here: https://FILL_IN-booking-link\\n\\n\" +\n      \"Our hours: \" + AGENCY.hours,\n  },\n\n  human: {\n    words: [\"human\", \"person\", \"someone\", \"agent\", \"talk to\", \"speak to\", \"call me\", \"urgent\"],\n    wantsHuman: true,\n    text:\n      \"Thanks {{name}}! 🙌 A member of our team will reply here soon.\\n\\n\" +\n      \"Our hours: \" + AGENCY.hours + \".\\n\" +\n      \"Tell us a little about your business and what you need, and we'll come prepared.\",\n  },\n\n  work: {\n    words: [\"portfolio\", \"work\", \"case study\", \"case studies\", \"clients\", \"results\", \"examples\"],\n    text:\n      \"*Our work*\\n\\n\" +\n      \"Case studies: \" + AGENCY.website + \"/work\\n\" +\n      \"Instagram: https://instagram.com/FILL_IN\\n\" +\n      \"Behance: https://behance.net/FILL_IN\",\n  },\n\n  website: {\n    words: [\"website\", \"site\", \"link\", \"instagram\", \"linkedin\", \"facebook\", \"pages\", \"socials\"],\n    text:\n      \"*Find us online*\\n\\n\" +\n      \"🌐 Website: \" + AGENCY.website + \"\\n\" +\n      \"📸 Instagram: https://instagram.com/FILL_IN\\n\" +\n      \"💼 LinkedIn: https://linkedin.com/company/FILL_IN\\n\" +\n      \"📘 Facebook: https://facebook.com/FILL_IN\",\n  },\n\n  services: {\n    words: [\"service\", \"services\", \"what do you do\", \"offer\", \"seo\", \"ads\", \"social\", \"website design\"],\n    text:\n      \"*Our services*\\n\\n\" +\n      \"• *FILL_IN Service 1* - one line about it\\n\" +\n      \"• *FILL_IN Service 2* - one line about it\\n\" +\n      \"• *FILL_IN Service 3* - one line about it\\n\" +\n      \"• *FILL_IN Service 4* - one line about it\\n\\n\" +\n      \"Details: \" + AGENCY.website + \"/services\",\n  },\n\n  welcome: {\n    words: [\"hi\", \"hello\", \"hey\", \"hii\", \"namaste\", \"menu\", \"start\", \"options\"],\n    text:\n      \"Hi {{name}}! 👋 Welcome to *\" + AGENCY.name + \"*.\\n\\n\" +\n      \"We help brands grow with FILL_IN one-line pitch.\\n\\n\" +\n      \"Tap *See options* below to explore, or just type what you need.\",\n  },\n\n  notUnderstood: {\n    text:\n      \"Sorry, I didn't catch that. 🙏\\n\\n\" +\n      \"Tap *See options* below, or type *person* to talk to our team.\",\n  },\n\n  notText: {\n    wantsHuman: true,\n    text:\n      \"Thanks for sending that! I can only read text messages, so a team member \" +\n      \"will take a look and reply here.\\n\\nOur hours: \" + AGENCY.hours,\n  },\n\n};\n\n// Label on the button that opens the menu (max 20 characters).\nconst MENU_BUTTON = \"See options\";\n\n// ---------------------------------------------------------------------\n//  STAY FREE\n//  WhatsApp gives 1,000 free replies per month per phone number (India,\n//  from Oct 2026). After FREE_REPLIES_PER_MONTH the bot goes quiet and\n//  just saves the chat to Notion so you can answer from the WhatsApp\n//  Business app. Set to 0 to switch the limit off.\n//  900 leaves a safety margin below 1,000.\n// ---------------------------------------------------------------------\nconst FREE_REPLIES_PER_MONTH = 900;\n\n// Messages that need no answer. The bot stays quiet (saves free replies).\nconst NO_REPLY_WORDS = [\"ok\", \"okay\", \"k\", \"kk\", \"thanks\", \"thank you\", \"thankyou\", \"thx\", \"ty\", \"cool\", \"great\", \"nice\", \"done\", \"noted\", \"sure\", \"fine\", \"hmm\"];\n\n// =====================================================================\n//  ENGINE - you should not need to edit below this line.\n// =====================================================================\n\nfunction pickTopic(msg) {\n  if (msg.choiceId && REPLIES[msg.choiceId]) return msg.choiceId;\n  if (!msg.text) return msg.messageType === \"text\" ? \"welcome\" : \"notText\";\n  const t = \" \" + msg.text.toLowerCase().replace(/[^\\p{L}\\p{N}\\s]/gu, \" \") + \" \";\n  // Topics are checked top to bottom, so the order of REPLIES matters.\n  for (const key of Object.keys(REPLIES)) {\n    const words = REPLIES[key].words || [];\n    if (words.some((w) => t.includes(\" \" + w.toLowerCase() + \" \") || (w.includes(\" \") && t.includes(w.toLowerCase())))) {\n      return key;\n    }\n  }\n  return \"notUnderstood\";\n}\n\nfunction buildBody(to, text) {\n  if (text.length <= 1024) {\n    return {\n      messaging_product: \"whatsapp\",\n      recipient_type: \"individual\",\n      to,\n      type: \"interactive\",\n      interactive: {\n        type: \"list\",\n        body: { text },\n        footer: { text: AGENCY.name.slice(0, 60) },\n        action: {\n          button: MENU_BUTTON.slice(0, 20),\n          sections: [{\n            title: \"Menu\",\n            rows: MENU.slice(0, 10).map((m) => ({\n              id: m.id, title: m.title.slice(0, 24), description: (m.detail || \"\").slice(0, 72),\n            })),\n          }],\n        },\n      },\n    };\n  }\n  // Too long for a menu message - send as plain text instead.\n  return {\n    messaging_product: \"whatsapp\",\n    recipient_type: \"individual\",\n    to,\n    type: \"text\",\n    text: { preview_url: true, body: text.slice(0, 4096) },\n  };\n}\n\n// Monthly reply counter. n8n keeps this between runs while the workflow\n// is Active (it resets when you manually \"Test workflow\").\nconst memory = $getWorkflowStaticData(\"global\");\nconst month = new Date().toISOString().slice(0, 7);\nif (memory.month !== month) { memory.month = month; memory.repliesSent = 0; }\n\nfunction isNoReply(msg) {\n  if (msg.choiceId || msg.messageType !== \"text\") return false;\n  const t = msg.text.toLowerCase().replace(/[^\\p{L}\\p{N}\\s]/gu, \" \").replace(/\\s+/g, \" \").trim();\n  return t === \"\" ? msg.text !== \"\" : NO_REPLY_WORDS.includes(t);\n}\n\nreturn $input.all().map((item) => {\n  const msg = item.json;\n  const topic = isNoReply(msg) ? \"noReply\" : pickTopic(msg);\n  const reply = REPLIES[topic] || { text: \"\" };\n  const firstName = (msg.name || \"\").split(\" \")[0];\n  const text = reply.text.replace(/\\{\\{name\\}\\}/g, firstName || \"there\");\n\n  const overLimit = FREE_REPLIES_PER_MONTH > 0 && memory.repliesSent >= FREE_REPLIES_PER_MONTH;\n  const send = topic !== \"noReply\" && !overLimit;\n  if (send) memory.repliesSent += 1;\n  const wantsHuman = Boolean(reply.wantsHuman) || (overLimit && topic !== \"noReply\");\n\n  return {\n    json: {\n      ...msg,\n      topic,\n      send,\n      overFreeLimit: overLimit,\n      repliesSentThisMonth: memory.repliesSent,\n      wantsHuman,\n      notionLeadsDatabaseId: AGENCY.notionLeadsDatabaseId,\n      saveLead: wantsHuman && AGENCY.notionLeadsDatabaseId.trim() !== \"\",\n      replyText: send ? text : \"\",\n      whatsappBody: send ? buildBody(msg.from, text) : null,\n    },\n  };\n});\n"
       },
-      "id": "e8e10062-3ed0-4d8c-91eb-3b738ff8b006",
+      "id": "00d7cceb-8272-4d99-8671-65450cfad8a3",
       "name": "Step 3 - Choose the reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         440,
         200
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://graph.facebook.com/v23.0/{{ $json.phoneNumberId }}/messages",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.whatsappBody) }}",
-        "options": {}
-      },
-      "id": "edc13ffc-0372-4839-a5e8-7e3b791e564a",
-      "name": "Step 4 - Send reply on WhatsApp",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        680,
-        120
       ]
     },
     {
@@ -174,7 +154,62 @@
           },
           "conditions": [
             {
-              "id": "8ce0ad8f-f6c4-4dee-9405-c4c1e9b6a53e",
+              "id": "bb9d5a70-0914-41d3-b20b-eb0a4aaa91e8",
+              "leftValue": "={{ $json.send }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "f277f008-f291-4aee-aa8b-c0d291bdd7ee",
+      "name": "Step 4 - Reply needed and still free?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        680,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v23.0/{{ $json.phoneNumberId }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.whatsappBody) }}",
+        "options": {}
+      },
+      "id": "41c7e4cb-1746-41a8-89d2-0501a2f77432",
+      "name": "Step 5 - Send reply on WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9d0796f8-e8ce-4edd-a766-cbd11f2def49",
               "leftValue": "={{ $json.saveLead }}",
               "rightValue": "",
               "operator": {
@@ -189,13 +224,13 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "e5eef5c7-4fc3-49bc-8aed-5474f500e0ac",
-      "name": "Step 5 - Wants a person?",
+      "id": "33773b95-6ad9-4313-896b-eec7339d49fb",
+      "name": "Step 6 - Save to Notion?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
         680,
-        320
+        340
       ]
     },
     {
@@ -218,13 +253,13 @@
         "jsonBody": "={{ JSON.stringify({\n  parent: { database_id: $json.notionLeadsDatabaseId },\n  properties: {\n    \"Name\": { title: [ { text: { content: $json.name || (\"+\" + $json.from) } } ] },\n    \"Phone\": { phone_number: \"+\" + $json.from },\n    \"Source\": { select: { name: \"WhatsApp\" } },\n    \"Message\": { rich_text: [ { text: { content: ($json.text || \"(\" + $json.messageType + \")\").slice(0, 2000) } } ] }\n  }\n}) }}",
         "options": {}
       },
-      "id": "91c6d946-94cc-4c61-8600-55e4db06f40e",
-      "name": "Step 6 - Save lead to Notion",
+      "id": "1b757384-0fac-49ae-a460-a00ed95cba55",
+      "name": "Step 7 - Save lead to Notion",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         920,
-        300
+        320
       ],
       "onError": "continueRegularOutput",
       "notes": "If Notion fails, the customer still got their reply."
@@ -286,23 +321,35 @@
       "main": [
         [
           {
-            "node": "Step 4 - Send reply on WhatsApp",
+            "node": "Step 4 - Reply needed and still free?",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Step 5 - Wants a person?",
+            "node": "Step 6 - Save to Notion?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Step 5 - Wants a person?": {
+    "Step 4 - Reply needed and still free?": {
       "main": [
         [
           {
-            "node": "Step 6 - Save lead to Notion",
+            "node": "Step 5 - Send reply on WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Step 6 - Save to Notion?": {
+      "main": [
+        [
+          {
+            "node": "Step 7 - Save lead to Notion",
             "type": "main",
             "index": 0
           }
