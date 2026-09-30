@@ -21,6 +21,9 @@ const ALLOWED = new Set([
   "n8n-nodes-base.scheduleTrigger",
   "n8n-nodes-base.manualTrigger",
   "n8n-nodes-base.stickyNote",
+  // Needed only by the WhatsApp workflow, to receive messages from Meta:
+  "n8n-nodes-base.webhook",
+  "n8n-nodes-base.respondToWebhook",
 ]);
 
 let failures = 0;

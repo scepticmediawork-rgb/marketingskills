@@ -7,9 +7,11 @@ A free replacement for the Agency OS "Brain" sub-workflow. It scores and drafts 
 | `rules-brain.json` | The **Rules Brain (no AI)** sub-workflow. Other workflows call it. |
 | `lead-scoring.json` | A worked example. It reads unscored leads from Notion, scores them with the Rules Brain, and writes **Score**, **Tier** and **Score Reasons** back to each row. |
 | `tests/test-rules-brain.js` | Runs the Brain's code on three sample leads and prints the results. |
-| `tests/validate-workflows.js` | Checks that both JSON files are valid and wired correctly. |
+| `whatsapp-auto-reply.json` | Instantly replies to WhatsApp messages with your services, pricing, website and page links, and a tap-to-open menu. **This one sends automatically.** Setup: [WHATSAPP-SETUP.md](WHATSAPP-SETUP.md). |
+| `tests/validate-workflows.js` | Checks that every workflow JSON file is valid and wired correctly. |
+| `tests/test-whatsapp-bot.js` | Runs the WhatsApp bot on sample messages and prints each reply. |
 
-Nothing in these workflows sends email, posts or publishes anything. They only prepare scores and drafts for you to review.
+The Rules Brain and lead-scoring workflows never send email, post or publish anything. They only prepare scores and drafts for you to review. The WhatsApp workflow is the exception: it auto-replies, as requested, but only with the fixed text you write and only to people who messaged you first.
 
 ---
 
